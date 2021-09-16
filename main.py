@@ -17,9 +17,9 @@ ev3 = EV3Brick()
 left_motor = Motor(Port.B) #Left motor in port B
 right_motor = Motor(Port.C) # Right motor in port C
 claw_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE) #Claw motor in port A
-line_sensor = ColorSensor(Port.S3) #Line sensor in port 3
-push_sensor = TouchSensor(Port.S2)
-ultra_sensor = UltrasonicSensor(Port.S4)
+line_sensor = ColorSensor(Port.S2) #Line sensor in port 3
+#push_sensor = TouchSensor(Port.S3)
+#ultra_sensor = UltrasonicSensor(Port.S4)
 
 # Initialize the drive base.
 robot = DriveBase(left_motor, right_motor, wheel_diameter=34, axle_track=14)
@@ -235,3 +235,9 @@ def autoDrive(BREAKABLE=0, DIST=100): #BASECODE TO DRIVE WHILE ON THE LINE
             break
     
 def deviationCheck (): # CHECKING DEVIATION. To be used in deviation = deviationCheck()
+    '''
+    deviaitionCheck is a function to be used instead of writing "deviation = linesensor.reflection - threshold" all the time.
+    '''
+    deviation = linesensor.reflection - threshold
+    return deviation
+
