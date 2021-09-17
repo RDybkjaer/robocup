@@ -1,0 +1,239 @@
+#!/usr/bin/env pybricks-micropython
+from pybricks.hubs import EV3Brick
+from pybricks.ev3devices import (Motor, TouchSensor, ColorSensor,
+                                 InfraredSensor, UltrasonicSensor, GyroSensor)
+from pybricks.parameters import Port, Stop, Direction, Button, Color
+from pybricks.tools import wait, StopWatch, DataLog
+from pybricks.robotics import DriveBase
+from pybricks.media.ev3dev import SoundFile, ImageFile
+
+
+# This program requires LEGO EV3 MicroPython v2.0 or higher.
+# Click "Open user guide" on the EV3 extension tab for more information.
+
+
+# Create your objects here.
+ev3 = EV3Brick()
+left_motor = Motor(Port.B) #Left motor in port B
+right_motor = Motor(Port.C) # Right motor in port C
+claw_motor = Motor(Port.A) #Claw motor in port A
+line_sensor = ColorSensor(Port.S2) #Line sensor in port 3
+#push_sensor = TouchSensor(Port.S3)
+#ultra_sensor = UltrasonicSensor(Port.S4)
+gyro_sensor = GyroSensor(Port.S1) #Gyro sensor in port 1
+
+# Initialize the drive base.
+robot = DriveBase(left_motor, right_motor, wheel_diameter=50, axle_track=138)
+
+
+
+
+#grå 30 25 26
+#hvid 52 46 65
+#sort 6 9
+GREY = 30
+WHITE = 45
+BLACK = 10
+
+threshold = (GREY + WHITE) / 2
+
+
+"""
+def follow_line(DRIVE_SPEED=500):
+    #Drive_speed is in mm pr second
+    
+    # Set the gain of the proportional line controller. This means that for every
+    # percentage point of light deviating from the threshold, we set the turn
+    # rate of the drivebase to 1.2 degrees per second.
+
+    # Set the gain of the proportional line controller. This means that for every
+    # percentage point of light deviating from the threshold, we set the turn
+    # rate of the drivebase to 1.2 degrees per second.
+
+    # For example, if the light value deviates from the threshold by 10, the robot
+    # steers at 10*1.2 = 12 degrees per second.
+    PROPORTIONAL_GAIN = 1.2
+
+    # Start following the line endlessly.
+    while True:
+        # Calculate the deviation from the threshold.
+        deviation = line_sensor.reflection() - threshold
+        # Calculate the turn rate.
+        turn_rate = PROPORTIONAL_GAIN * deviation
+
+        # Set the drive base speed and turn rate.
+        robot.drive(DRIVE_SPEED, turn_rate)
+
+        if line_sensor.reflection() < 10:
+          break      
+
+def switch_lane():#NUMBER_TO_IGNORE=0, TURN_SIDE): #BASIC CODE FOR CHANGING LANE - USED IN SEKVENS 1 & 4
+
+    i=0
+    """
+"""
+    Turn_drive_ignore is used to change lanes, by ignoring other lanes.
+    Defined by TURN_SIDE, it'll turn either 45 degrees right, left or not at all.
+
+    An idea might be to add at "forwards or backwards" argument, so it can function for sequence 5 as well.
+    """
+"""
+    robot.straight(50)
+    deviation = line_sensor.reflection()
+    gyro_sensor.reset_angle(0)
+    #Following lines defines which way to turn. If no side is given, it'll beep and stop the function
+    if TURN_SIDE == 'RIGHT':
+        turnAngle = 75
+    elif TURN_SIDE == 'LEFT':
+        turnAngle = -75
+    else:
+        turnAngle = 0
+    
+    robot.turn(turnAngle)
+    robot.drive(360) #drive with 360deg/sec
+
+    while i <= NUMBER_TO_IGNORE:
+        if deviaition <= line_sensor.reflection() + 20:
+            i = i + 1
+        
+        deviation = deviaitionCheck
+    robot.stop()
+
+    robot.turn(turnAngle * -1)
+
+def turn_90():
+    robot.turn(90)
+    if gyro_sensor.angle == 90:
+        return 0
+
+def find_flask():
+    follow_line()
+    if ultra_sensor.distance == 30:
+        return 0
+
+def pick_up():
+    claw_motor.run_until_stalled(100, then=stop.HOLD, duty_limit=50)
+
+def sekvens1():
+    switch_lane(TURN_SIDE='RIGHT')
+    follow_line(DRIVE_SPEED=300)
+
+def sekvens2():
+    switch_lane(TURN_SIDE='LEFT')
+    follow_line(DRIVE_SPEED=200)
+
+def sekvens3():
+    
+    '''
+    The sequence used by the robot to finish task 3, the waterbottle task
+    '''
+
+    robot.stop()
+    robot.straight(100)
+    gyro_sensor.reset_angle(0)
+    
+    #Following lines turn the robot untill it can "see" the bottle
+    while sensorVar > 500:
+        robot.turn(5)
+        sensorVar = ultra_sensor.distance()
+    
+
+    #Following lines drives the robot towards the bottle, slowing down as it approches
+    approch_bottle()
+    
+    claw_motor.run_angle(speed=360, target_angle=360*lift_rotations)
+    
+    #Following lines drives towards the black line
+    
+    deviaition = line_sensor.reflection()
+
+    while deviation > BLACK:
+        robot.drive(100)
+        deviaition = line_sensor.reflection()
+    robot.stop()
+
+    claw_motor.run_angle(speed=360, target_angle=-360*lift_rotations)
+
+    robot.straight(-100)
+
+    approch_bottle()
+
+    claw_motor.run_angle(speed=360, target_angle=360*lift_rotations)
+
+    robot.turn(-(gyro_sensor.angle()+90))
+
+    #tom
+
+def approch_bottle():
+    while sensorVar > 50:
+        drive_speed_bootle = (sensorVar * 2) / 2
+        robot.drive(drive_speed_bootle)
+        sensorVar = ultra_sensor.distance()
+
+def loop(): #MAIN CODE - THIS CODE CALLS THE SUBFUNCTIONS
+    follow_line()
+    for sekvens in range(1,13):
+
+        if sekvens == 1:
+            sekvens1()  
+
+        elif sekvens == 2:
+            sekvens2()        
+
+        elif sekvens == 3:
+            sekvens3()         
+
+        elif sekvens == 4:
+            sekvens4()            
+
+        elif sekvens == 5:
+            sekvens5()
+
+        elif sekvens == 6:
+            sekvens6()
+
+        elif sekvens == 7:
+            sekvens7()
+
+        elif sekvens == 8:
+            sekvens6()
+
+        elif sekvens == 9:
+            sekvens9()
+        
+        else:
+            ev3.speaker.play_file(SoundFile.FANFARE)
+"""
+def turnRight(SPEED = 100, TURNANGLE = 90):
+    ang = 0
+    gyro_sensor.reset_angle(0)
+    while ang < TURNANGLE:
+        left_motor.run(SPEED)
+        right_motor.run(-SPEED)
+        ang = gyro_sensor.angle()
+    robot.stop()
+
+def turnLeft(SPEED = 100, TURNANGLE = 90):
+    ang = 0
+    gyro_sensor.reset_angle(0)
+    while ang > TURNANGLE:
+        left_motor.run(-SPEED)
+        right_motor.run(SPEED)
+        ang = gyro_sensor.angle()
+    robot.stop()
+
+
+
+def testloop():
+    ang = 360 * 1.2
+    claw_motor.run_target(speed=200, target_angle = ang)
+    wait(500)
+    claw_motor.run_target(speed=-200, target_angle = 0)
+
+
+
+        
+   
+testloop()
+     
+
