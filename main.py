@@ -1,7 +1,6 @@
 #!/usr/bin/env pybricks-micropython
 from pybricks.hubs import EV3Brick
-from pybricks.ev3devices import (Motor, TouchSensor, ColorSensor,
-                                 InfraredSensor, UltrasonicSensor, GyroSensor)
+from pybricks.ev3devices import (Motor, TouchSensor, ColorSensor, InfraredSensor, UltrasonicSensor, GyroSensor)
 from pybricks.parameters import Port, Stop, Direction, Button, Color
 from pybricks.tools import wait, StopWatch, DataLog
 from pybricks.robotics import DriveBase
@@ -16,7 +15,7 @@ from pybricks.media.ev3dev import SoundFile, ImageFile
 ev3 = EV3Brick()
 left_motor = Motor(Port.B) #Left motor in port B
 right_motor = Motor(Port.C) # Right motor in port C
-claw_motor = Motor(Port.A) #Claw motor in port A
+claw_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE) #Claw motor in port A
 line_sensor = ColorSensor(Port.S2) #Line sensor in port
 #push_sensor = TouchSensor(Port.S3)
 ultra_sensor = UltrasonicSensor(Port.S3)
@@ -26,12 +25,9 @@ gyro_sensor = GyroSensor(Port.S1) #Gyro sensor in port 1
 robot = DriveBase(left_motor, right_motor, wheel_diameter=50, axle_track=138)
 
 
-
-
 #grå 30 25 26    // 48 49
 #hvid 52 46 65   // 86 87
 #sort 6 9        // 9 8
-
 
 GREY = 48
 WHITE = 80
@@ -71,7 +67,7 @@ def follow_line(DRIVE_SPEED=150, P_GAIN=1.2,direction=1, breakable=0):
         if line_sensor.reflection() < BLACK:
             i = 1
 
-def switch_lane(NUMBER_TO_IGNORE=0, TURN_SIDE='RIGHT'): #BASIC CODE FOR CHANGING LANE - USED IN SEKVENS 1 & 4
+def switch_lane(TURN_SIDE='RIGHT'): #BASIC CODE FOR CHANGING LANE - USED IN SEKVENS 1 & 4
 
     i=0
 
@@ -92,9 +88,7 @@ def switch_lane(NUMBER_TO_IGNORE=0, TURN_SIDE='RIGHT'): #BASIC CODE FOR CHANGING
         else:
             break
         robot.straight(50)
-        robot.drive(150,0) #drive with 360deg/sec
-        while line_sensor.reflection() > 60:
-            wait(1)
+        find_color()
         print('Out of the loop')
         robot.stop()
         print('stopped ok')
@@ -147,24 +141,26 @@ def sekvens3():
     gyro_sensor.reset_angle(0)
     sensorVar = ultra_sensor.distance()
     print(sensorVar)
-    #Following lines turn the robot untill it can "see" the bottle
-    """
-    while sensorVar > 500:
-        print(sensorVar)
-        robot.drive(0,30)
-        sensorVar = ultra_sensor.distance()
-    """
+    print('after sensor var')
+
     turnRight(TURNANGLE=45)
+    print('after turn succes')
     robot.straight(50)
-    while line_sensor.reflection() > 55:
-        robot.drive(150,0)
-    while line_sensor.reflection() < 55:
-        robot.drive(150,0)
+    print('driving 10cm')
+
+    find_color(COLOR='WHITE')
+    robot.stop()
+    find_color(COLOR='GREY')
+    robot.stop()
+    turnRight(TURNANGLE = 45)
+
+    """
     gyro_sensor.reset_angle(0)
     sensorVar_low = 500
     angle = 0
-    for angle in range(0,75,5)
-        sensorVar=ultra_sensor.distance()
+    angle_low = 1000
+    for angle in range(0,75,5):
+        sensorVar = ultra_sensor.distance()
         if sensorVar < sensorVar_low:
             sensorVar_low = sensorVar
             angle_low = angle
@@ -174,9 +170,10 @@ def sekvens3():
         print('sensor: ')
         print(sensorVar)
         print('low: ')
-        print(anglelow)
-
+        print(angle_low)
     turnLeft(TURNANGLE=75-angle_low)   
+    """
+
     approch_bottle()
     robot.stop()
 
@@ -188,32 +185,62 @@ def sekvens3():
         wait(1)
     robot.stop()
 
-    grab(ROTATIONS=-100)
+    grab(SPEED=-1800)
 
     robot.straight(-100)
 
-    approch_bottle()
+    approch_bottle(ultra_sensor.distance())
 
     grab()
 
 def sekvens4():
     robot.straight(-100)
-    robot.drive(-150,0)
 
-    while line_sensor.reflection() > 60
-        wait(1)
+    find_color(SPEED = - 150, COLOR='WHITE')
+
     turnLeft(ROTATION_SPEED = 60, TURNANGLE = 180)
 
-    """
-    if rotation == 'LEFT':
-        turnLeft(TURNANGLE=45)
-        while line_sensor.reflection() > 60:
-            robot.drive(150, 15)
-    elif rotation == 'RIGHT':
-        turnRight(TURNANGLE=45)
-        while line_sensor.reflection() > 60:
-            robot.drive(150,-15)
-    """
+    robot.drive(150,0)
+    grey_counter(NUMBER = 4)
+
+    turnRight(TURNANGLE = 5)
+
+    grab(ROTATIONS = -2)
+
+    robot.straight(-500)
+
+    turnLeft(ROTATION_SPEED = 60, TURNANGLE = 180)
+
+    find_color()
+
+    turnLeft(TURNANGLE = 85)
+
+    follow_line()
+
+def grey_counter(NUMBER = 1):
+    i = 0
+    while i <= NUMBER:
+        if line_sensor.reflection() < 60:
+            if previous_grey == False:
+                i = i + 1
+            previous_grey = True
+        else:
+            previous_grey = False
+
+def find_color(SPEED = 150, COLOR = 'GREY'):
+    robot.drive(SPEED,0) #drive with 360deg/sec
+    if COLOR == 'WHITE':
+        while line_sensor.reflection() < 70:
+            print('LINESENSOR (WHITE)')
+            print(line_sensor.reflection())
+            wait(1)
+    
+    elif COLOR == 'GREY':
+        robot.drive(SPEED,0) #drive with 360deg/sec
+        while line_sensor.reflection() > 55:
+            print('LINESENSOR (GREY)')
+            print(line_sensor.reflection())
+            wait(1)
 
 def sekvens5():
     wait(50)
@@ -232,10 +259,9 @@ def sekvens10(version='normal'):
     if version == 'normal':
         around_bottle(rotation='LEFT')
         follow_line()
-    elif version == 'ShitsAndGiggles'
+    elif version == 'ShitsAndGiggles':
         turnright(45)
-        while line_sensor.reflection() > 60:
-            robot.drive(150, 0)
+        find_color()
 
 def sekvens11():
     turnRight(TURNANGLE=45)
@@ -245,7 +271,7 @@ def sekvens11():
     turnRight(TURNANGLE=90)
     robot.straight(100)
     turnLeft(TURNANGLE=45)
-    while line_sensor.reflection < 60
+    while line_sensor.reflection < 60:
         robot.drive(150, 0)
     follow_line()
 
@@ -253,13 +279,42 @@ def sekvens12():
     around_bottle(rotation='RIGHT')
     follow_line(direction=-1)
 
-def approch_bottle():
-    while sensorVar > 50:
-        drive_speed_bottle = (sensorVar * 2) / 2
-        robot.drive(drive_speed_bottle)
+def approch_bottle(sensorVar = 1000):
+    i = 0
+
+    while sensorVar > 100:
+        print('Start quick approch')
         sensorVar = ultra_sensor.distance()
+        # Calculate the deviation from the threshold.
+        deviation = line_sensor.reflection() - threshold
+        # Calculate the turn rate.
+        turn_rate = 1.2 * deviation*-1
+        # Set the drive base speed and turn rate.
+        drive_speed_bottle = (sensorVar)/5
+        robot.drive(drive_speed_bottle, turn_rate)
+        print(sensorVar)
+
+    print('Turning left')
+    turnLeft(TURNANGLE = 5)
+    
+    print('start slow approch')
+    while sensorVar > 70:
+        print(sensorVar)
+        sensorVar = ultra_sensor.distance()
+        drive_speed_bottle = (sensorVar)/10
+        robot.drive(drive_speed_bottle, 0)
+
+
 
 def around_bottle(rotation='LEFT'):
+    if rotation == 'LEFT':
+        turnLeft(TURNANGLE=45)
+        while line_sensor.reflection() > 60:
+            robot.drive(150, 15)
+    elif rotation == 'RIGHT':
+        turnRight(TURNANGLE=45)
+        while line_sensor.reflection() > 60:
+            robot.drive(150,-15)
 
 def loop(): #MAIN CODE - THIS CODE CALLS THE SUBFUNCTIONS
     follow_line()
@@ -293,6 +348,18 @@ def loop(): #MAIN CODE - THIS CODE CALLS THE SUBFUNCTIONS
         elif sekvens == 9:
             sekvens9()
         
+        elif sekvens == 10:
+            sekvens10()
+            
+        elif sekvens == 11:
+            sekvens11()
+            
+        elif sekvens == 12:
+            sekvens12()
+            
+        elif sekvens == 13:
+            sekvens13()
+
         else:
             ev3.speaker.play_file(SoundFile.FANFARE)
 
@@ -300,20 +367,24 @@ def turnRight(ROTATION_SPEED = 45, TURNANGLE = 90):
     ang = 0
     gyro_sensor.reset_angle(0)
     robot.drive(0,ROTATION_SPEED)
+    print('begin right turn')
 
     while  ang < TURNANGLE:
         ang = gyro_sensor.angle()
-
+    print('finished right turn')
     robot.stop()
 
 def turnLeft(ROTATION_SPEED = 45, TURNANGLE = 90):
     ang = 0
     gyro_sensor.reset_angle(0)
     robot.drive(0,-ROTATION_SPEED)
+    print('begin left turn')
 
-    while ang > -TURNANGLE:
+    while  ang > TURNANGLE:
         ang = gyro_sensor.angle()
+    print('finished left turn')
     robot.stop()
+
 
 def turnLeftToLine(ROTATION_SPEED = 45):
     robot.drive(0,-ROTATION_SPEED)
@@ -327,7 +398,7 @@ def turnRightToLine(ROTATION_SPEED = 45):
         wait(1)
     robot.stop()
 
-def grab(SPEED=1800, rotations=100)
+def grab(SPEED=1800, rotations=15):
     claw_motor.reset_angle(0)
     claw_motor.run_angle(speed=SPEED, rotation_angle=360*rotations)
 
@@ -351,6 +422,11 @@ def test_loop():
     follow_line()
     sekvens3()
 
+def antigrab():
+    grab(SPEED = -1800, rotations=15)
+
+
+#antigrab()
 
 #loop()
 
