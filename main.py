@@ -16,41 +16,238 @@ from pybricks.media.ev3dev import SoundFile, ImageFile
 ev3 = EV3Brick()
 left_motor = Motor(Port.B) #Left motor in port B
 right_motor = Motor(Port.C) # Right motor in port C
-claw_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE) #Claw motor in port A
-line_sensor = ColorSensor(Port.S2) #Line sensor in port 3
+claw_motor = Motor(Port.A) #Claw motor in port A
+line_sensor = ColorSensor(Port.S2) #Line sensor in port
 #push_sensor = TouchSensor(Port.S3)
-#ultra_sensor = UltrasonicSensor(Port.S4)
+ultra_sensor = UltrasonicSensor(Port.S3)
+gyro_sensor = GyroSensor(Port.S1) #Gyro sensor in port 1
 
 # Initialize the drive base.
-robot = DriveBase(left_motor, right_motor, wheel_diameter=34, axle_track=14)
-
-# Calculate the light threshold. Choose values based on your measurements.
-BLACK = 9
-WHITE = 85
-threshold = (BLACK + WHITE) / 2
-
-'''
-grey: -5 10
-white 30 55
-black -45 -35
-'''
-
-#DER BØR TILFØJES EN VARIABEL SOM DEFINERER HVILKEN SIDE DEN SKAL TJEKKE TIL FØRST. FX EFTER SEKVENS2 SKAL DEN TIL HØJRE,
-#OG EFTER SEKVENS3 SKAL DEN TIL VENSTRE
+robot = DriveBase(left_motor, right_motor, wheel_diameter=50, axle_track=138)
 
 
-def loop: #MAIN CODE - THIS CODE CALLS THE SUBFUNCTIONS
-    for sekvens in range(1,10)
-        autoDrive(DIST=100)
+
+
+#grå 30 25 26    // 48 49
+#hvid 52 46 65   // 86 87
+#sort 6 9        // 9 8
+
+
+GREY = 48
+WHITE = 80
+BLACK = 15
+
+threshold = (GREY + WHITE) / 2
+
+
+
+def follow_line(DRIVE_SPEED=150, P_GAIN=1.2,direction=1, breakable=0):
+    i = 0
+    #Drive_speed is in mm pr second
+    
+    # Set the gain of the proportional line controller. This means that for every
+    # percentage point of light deviating from the threshold, we set the turn
+    # rate of the drivebase to 1.2 degrees per second.
+
+    # Set the gain of the proportional line controller. This means that for every
+    # percentage point of light deviating from the threshold, we set the turn
+    # rate of the drivebase to 1.2 degrees per second.
+
+    # For example, if the light value deviates from the threshold by 10, the robot
+    # steers at 10*1.2 = 12 degrees per second.
+
+    # Start following the line endlessly.
+
+    while i == 0:
+        # Calculate the deviation from the threshold.
+        deviation = line_sensor.reflection() - threshold
+        # Calculate the turn rate.
+        turn_rate = P_GAIN * deviation * direction
+    
+        
+
+        # Set the drive base speed and turn rate.
+        robot.drive(DRIVE_SPEED, turn_rate)
+        if breakable == 1:
+            break
+    
+        if line_sensor.reflection() < BLACK:
+            i = 1
+
+def switch_lane(NUMBER_TO_IGNORE=0, TURN_SIDE='RIGHT'): #BASIC CODE FOR CHANGING LANE - USED IN SEKVENS 1 & 4
+
+    i=0
+
+    """
+    switch_lane is used to change lanes, by ignoring other lanes.
+    Defined by TURN_SIDE, it'll turn either 45 degrees right, left or not at all.
+
+    An idea might be to add at "forwards or backwards" argument, so it can function for sequence 5 as well.
+    """
+
+    robot.straight(50)
+    #Following lines defines which way to turn. If no side is given, it'll beep and stop the function
+    while True:
+        if TURN_SIDE == 'RIGHT':
+            turnRight(TURNANGLE = 45)
+        elif TURN_SIDE == 'LEFT':
+            turnLeft(TURNANGLE = 45)
+        else:
+            break
+        robot.straight(50)
+        robot.drive(150,0) #drive with 360deg/sec
+        while line_sensor.reflection() > 60:
+            wait(1)
+        print('Out of the loop')
+        """
+        while i <= NUMBER_TO_IGNORE:
+            print('I number to ignore løkke')
+            last_value = line_sensor.reflection() - 20
+            print('last value:')
+            print(last_value)
+            print('line senser:')
+            print(line_sensor.reflection())
+
+            if last_value > line_sensor.reflection():
+                i = i + 1
+                print('i stiger')
+        print('ude af i løkke')
+        """
+        robot.stop()
+        print('stopped ok')
+
+        robot.straight(80)
+        print('3.2cm')
+
+        
+        if TURN_SIDE == 'RIGHT':
+            print('correction left')
+            turnLeft(TURNANGLE = 45)
+            #turnLeftToLine()
+        elif TURN_SIDE == 'LEFT':
+            print('correcting right')
+            turnRight(TURNANGLE = 45)
+            #turnRightToLine()
+        else:
+            print('not correcting')
+        
+        print('breaking')
+        break
+    
+def pick_up():
+    claw_motor.run_until_stalled(100, then=stop.HOLD, duty_limit=50)
+
+def sekvens1():
+    switch_lane(TURN_SIDE='RIGHT')
+    follow_line()
+
+def sekvens2():
+    switch_lane(TURN_SIDE='LEFT')
+    follow_line(DRIVE_SPEED=150, P_GAIN=2.5)
+
+    """
+    if line_sensor.reflection() <60:
+        turnrate=2
+    elif line_sensor.reflection() > 60:
+        turnrate=1
+    follow_line(DRIVE_SPEED=150,P_GAIN=turnrate,)
+    """
+    print('finished seq 2')
+
+def sekvens3():
+    
+    '''
+    The sequence used by the robot to finish task 3, the waterbottle task
+    '''
+
+    robot.stop()
+    gyro_sensor.reset_angle(0)
+    sensorVar = ultra_sensor.distance()
+    print(sensorVar)
+    #Following lines turn the robot untill it can "see" the bottle
+    """
+    while sensorVar > 500:
+        print(sensorVar)
+        robot.drive(0,30)
+        sensorVar = ultra_sensor.distance()
+    """
+    turnRight(TURNANGLE=45)
+    robot.straight(50)
+    while line_sensor.reflection() > 55:
+        robot.drive(150,0)
+    while line_sensor.reflection() < 55:
+        robot.drive(150,0)
+    gyro_sensor.reset_angle(0)
+    sensorVar_low = 500
+    angle = 0
+    for angle in range(0,75,5)
+        sensorVar=ultra_sensor.distance()
+        if sensorVar < sensorVar_low:
+            sensorVar_low = sensorVar
+            angle_low = angle
+        turnRight(TURNANGLE=5)
+        print('angle: ')
+        print(angle)
+        print('sensor: ')
+        print(sensorVar)
+        print('low: ')
+        print(anglelow)
+
+    turnLeft(TURNANGLE=75-angle_low)    
+    
+    
+        
+    approch_bottle()
+    
+    
+    robot.stop()
+
+    
+
+    #Following lines drives the robot towards the bottle, slowing down as it approches
+    """
+    claw_motor.run_angle(speed=360, target_angle=360*lift_rotations)
+    
+    #Following lines drives towards the black line
+    
+    deviaition = line_sensor.reflection()
+
+    while deviation > BLACK:
+        robot.drive(100)
+        deviaition = line_sensor.reflection()
+    robot.stop()
+
+    claw_motor.run_angle(speed=360, target_angle=-360*lift_rotations)
+
+    robot.straight(-100)
+
+    approch_bottle()
+
+    claw_motor.run_angle(speed=360, target_angle=360*lift_rotations)
+
+    robot.turn(-(gyro_sensor.angle()+90))
+
+    """
+
+def approch_bottle():
+    while sensorVar > 50:
+        drive_speed_bottle = (sensorVar * 2) / 2
+        robot.drive(drive_speed_bottle)
+        sensorVar = ultra_sensor.distance()
+
+def loop(): #MAIN CODE - THIS CODE CALLS THE SUBFUNCTIONS
+    follow_line()
+    for sekvens in range(1,13):
+        print(sekvens)
 
         if sekvens == 1:
-            sekvens1()
+            sekvens1()  
 
         elif sekvens == 2:
-            sekvens2()            
+            sekvens2()        
 
         elif sekvens == 3:
-            sekvens3()           
+            sekvens3()         
 
         elif sekvens == 4:
             sekvens4()            
@@ -73,171 +270,71 @@ def loop: #MAIN CODE - THIS CODE CALLS THE SUBFUNCTIONS
         else:
             ev3.speaker.play_file(SoundFile.FANFARE)
 
-def sekvens1(): #CHANGE LANE TWO DIRECTIONS - READY FOR TEST
-    '''
-    Function for sekvens 1, changing line twice.
-    '''
-    turn_drive_ignore(0, 'RIGHT')
-    autoDrive(DIST=100)
-    turn_drive_ignore(0, 'LEFT')
+def turnRight(ROTATION_SPEED = 45, TURNANGLE = 90):
+    ang = 0
+    gyro_sensor.reset_angle(0)
+    robot.drive(0,ROTATION_SPEED)
 
-def sekvens2(): #PICK UP WATERBOTTLE - READY FOR TEST
-    '''
-    The sequence used by the robot to finish task 3, the waterbottle task
-    '''
+    while  ang < TURNANGLE:
+        ang = gyro_sensor.angle()
 
-    #Following lines drives towards the bottle and picks it up
-    sensorVar = ultra_sensor.distance()
-    robot.turn(45)
-    while sensorVar > 50:
-        autoDrive(BREAKABLE=1,DIST=5)
+    robot.stop()
+
+def turnLeft(ROTATION_SPEED = 45, TURNANGLE = 90):
+    ang = 0
+    gyro_sensor.reset_angle(0)
+    robot.drive(0,-ROTATION_SPEED)
+
+    while ang > -TURNANGLE:
+        ang = gyro_sensor.angle()
+    robot.stop()
+
+def turnLeftToLine(ROTATION_SPEED = 45):
+    robot.drive(0,-ROTATION_SPEED)
+    while line_sensor.reflection() < 60:
+        wait(1)
+    robot.stop()
+
+def turnRightToLine(ROTATION_SPEED = 45):
+    robot.drive(0,ROTATION_SPEED)
+    while line_sensor.reflection() < 60:
+        wait(1)
+    robot.stop()
+
+def grab(speed, rotations)
+    print('something')
+
+def line_test():
+    while True:
+        deviation = line_sensor.reflection()
+        print(deviation)
+
+def angle_test():
+    for i in range(0,180,15):
+        gyro_sensor.reset_angle(0)
+        robot.turn(i)
+        ang = gyro_sensor.angle()
+
+def ultra_test():
+    while True:
         sensorVar = ultra_sensor.distance()
-    claw_motor.run_time(360, 5000)
-    
-    #Following lines drives towards the black line
-    deviation = deviationCheck()
-    while deviation >= -35:
-        robot.drive(100)
-    robot.stop()
+        print(sensorVar)
 
-    #Folloing lines puts down the bottle and return back to the track
-    claw_motor.runtime(-360, 5000)
-    robot.straigt(100)
-    robot.turn(-145)
+def test_loop():
+    follow_line()
+    sekvens3()
 
-    while deviation >= 35:
-        robot.drive(100)
-    robot.stop()
 
-def sekvens3(): #SEESAW - UNFINISHED
-    '''
-    Function to do task 3, the seesaw.
-    An idea might be to put on a gyroscope and make to robot stop when the movement happens?
-    '''
-    robot.turn(45)
-    robot.straight(100)
-    autoDrive(DIST=100)
-    autoDrive(DIST=10)
+#loop()
 
-def sekvens4(): #CHANGE LANE TWICE - READY FOR TEST
-    autoDrive(DIST=10)
-    turn_drive_ignore(1, 'LEFT')
+test_loop()
 
-def sekvens5(): #UNFINISHED
-    '''
-    Ingen idé so far.
-    Drej til venstre
-    Fortsæt frem til stregen
-    Kør ind på midten vha robot.straight.
-    Drej til du kan se flasken
-    Saml flasken op - bør man lave en fællesfunktion for sekvens 2 og 5?
-    Bak ud og tæl stregerne - turn_drive_ignore??
-    Stil flasken
-    Bak væk.
-    Find ud.
-    Drej til venstre ved udgangen
-    '''
+#ultra_test()
 
-def sekvens6(): #USED BOTH FOR SEKVENS6 & 8 - UNFINISHED
-    '''
-    This code finds the bottle, turns around it, and lands back at the originpoint
-    '''
-    deviation = deviationCheck()
-    while sensorVar > 100:
-        autoDrive(BREAKABLE=1,DIST=10)
-        sensorVar = ultra_sensor.distance()
-    robot.turn(45)
-    robot.straight(200)
-    robot.turn(-90)
+#angle_test()
 
-    while deviation >= 35 #White
-        robot.drive(100)
-    robot.stop()
-    robot.turn(45)
+#line_test()
 
-def sekvens7(): #UNFINISHED
-    '''
-    NOTHING TO SEE HERE
-    '''
+#turnLeft()     
 
-def sekvens9(): #UNFINISHED
-    '''
-    NOTHING TO SEE HERE
-    '''
-
-def turn_drive_ignore(NUMBER_TO_IGNORE, SIDE_TO_TURN) #BASIC CODE FOR CHANGING LANE - USED IN SEKVENS 1 & 4
-    '''
-    Turn_drive_ignore is used to change lanes, by ignoring other lanes.
-    Defined by SIDE_TO_TURN, it'll turn either 45 degrees right, left or not at all.
-
-    An idea might be to add at "forwards or backwards" argument, so it can function for sequence 5 as well.
-
-    '''
-    deviation = deviationCheck()
-    
-    #Following lines defines which way to turn. If no side is given, it'll beep and stop the function
-    if SIDE_TO_TURN == 'RIGHT':
-        turnAngle = 45
-    elif SIDE_TO_TURN == 'LEFT':
-        turnAngle = -45
-    else:
-        turnAngle = 0
-    
-    robot.turn(turnAngle):
-    robot.drive(360): #drive with 360deg/sec
-
-    while i < NUMBER_TO_IGNORE:
-        if deviaition >= deviationcheck
-            i = i+1
-        
-        deviation = deviaitionCheck:
-    robot.stop()
-
-    robot.turn(turnAngle * -1)
-    break
-
-def straightenUp (): #BASIC CODE TO KEEP ON THE LINE - USED IN AUTODRIVE
-    '''
-    straightenUp helps the robot return to the line.
-    It turns 50 degrees in each direction and checks wether the line shows up. C destines wether it turns right or left.
-    Returns the angle at which it found the line, to be used in later corrections
-    '''
-    deviation = deviationCheck()
-    while deviation >= 30: #white
-        c = 1
-        for i in range(0,50*c,10*c):
-            robot.turn(i):
-            deviation = deviationCheck()
-        robot.turn(-50)
-        c = c * -1
-    return i
-
-def autoDrive(BREAKABLE=0, DIST=100): #BASECODE TO DRIVE WHILE ON THE LINE
-    '''
-    autoDrive is a function that drives the robot while looking for deviation to the line.
-    It is supposed to have a distance driven added
-    '''
-    while deviaition <= -35: #black
-        if deviation < 30:
-            robot.straight(DISTANCE)
-            deviation = deviationCheck()
-        else:
-            '''
-            straightenUp guides the robot back on track, and returns the turning value it needed to do(correction).
-            This allows us to center the robot on the line(5 cm to center?) and return to driving
-            '''
-            correction = straightenUp()
-            robot.straight(50):
-            robot.turn(correction)
-            deviation = deviationCheck()
-        
-        if BREAKABLE == TRUE #Tells us wether to stop at a black line, or only drive the distance given in "distance"
-            break
-    
-def deviationCheck (): # CHECKING DEVIATION. To be used in deviation = deviationCheck()
-    '''
-    deviaitionCheck is a function to be used instead of writing "deviation = linesensor.reflection - threshold" all the time.
-    '''
-    deviation = linesensor.reflection - threshold
-    return deviation
-
+#follow_line(DRIVE_SPEED=150, P_GAIN=2.5, direction=-1)
