@@ -39,9 +39,8 @@ BLACK = 15
 
 threshold = (GREY + WHITE) / 2
 
-
-
 def follow_line(DRIVE_SPEED=150, P_GAIN=1.2,direction=1, breakable=0):
+    #direction 1 gives bias to the right side, 0 to the left side
     i = 0
     #Drive_speed is in mm pr second
     
@@ -63,8 +62,6 @@ def follow_line(DRIVE_SPEED=150, P_GAIN=1.2,direction=1, breakable=0):
         deviation = line_sensor.reflection() - threshold
         # Calculate the turn rate.
         turn_rate = P_GAIN * deviation * direction
-    
-        
 
         # Set the drive base speed and turn rate.
         robot.drive(DRIVE_SPEED, turn_rate)
@@ -99,25 +96,11 @@ def switch_lane(NUMBER_TO_IGNORE=0, TURN_SIDE='RIGHT'): #BASIC CODE FOR CHANGING
         while line_sensor.reflection() > 60:
             wait(1)
         print('Out of the loop')
-        """
-        while i <= NUMBER_TO_IGNORE:
-            print('I number to ignore løkke')
-            last_value = line_sensor.reflection() - 20
-            print('last value:')
-            print(last_value)
-            print('line senser:')
-            print(line_sensor.reflection())
-
-            if last_value > line_sensor.reflection():
-                i = i + 1
-                print('i stiger')
-        print('ude af i løkke')
-        """
         robot.stop()
         print('stopped ok')
 
         robot.straight(80)
-        print('3.2cm')
+        print('8cm')
 
         
         if TURN_SIDE == 'RIGHT':
@@ -193,47 +176,90 @@ def sekvens3():
         print('low: ')
         print(anglelow)
 
-    turnLeft(TURNANGLE=75-angle_low)    
-    
-    
-        
+    turnLeft(TURNANGLE=75-angle_low)   
     approch_bottle()
-    
-    
     robot.stop()
 
-    
+    grab()
 
-    #Following lines drives the robot towards the bottle, slowing down as it approches
-    """
-    claw_motor.run_angle(speed=360, target_angle=360*lift_rotations)
-    
-    #Following lines drives towards the black line
-    
-    deviaition = line_sensor.reflection()
 
-    while deviation > BLACK:
-        robot.drive(100)
-        deviaition = line_sensor.reflection()
+    robot.drive(100,0)
+    while line_sensor.reflection() > BLACK:
+        wait(1)
     robot.stop()
 
-    claw_motor.run_angle(speed=360, target_angle=-360*lift_rotations)
+    grab(ROTATIONS=-100)
 
     robot.straight(-100)
 
     approch_bottle()
 
-    claw_motor.run_angle(speed=360, target_angle=360*lift_rotations)
+    grab()
 
-    robot.turn(-(gyro_sensor.angle()+90))
+def sekvens4():
+    robot.straight(-100)
+    robot.drive(-150,0)
+
+    while line_sensor.reflection() > 60
+        wait(1)
+    turnLeft(ROTATION_SPEED = 60, TURNANGLE = 180)
 
     """
+    if rotation == 'LEFT':
+        turnLeft(TURNANGLE=45)
+        while line_sensor.reflection() > 60:
+            robot.drive(150, 15)
+    elif rotation == 'RIGHT':
+        turnRight(TURNANGLE=45)
+        while line_sensor.reflection() > 60:
+            robot.drive(150,-15)
+    """
+
+def sekvens5():
+    wait(50)
+    robot.stop()
+
+    turnLeft(TURNANGLE=90)
+    follow_line()
+
+def sekvens6():
+    follow_line(breakable=1,direction=-1)
+
+def sekvens8():
+    follow_line()
+
+def sekvens10(version='normal'):
+    if version == 'normal':
+        around_bottle(rotation='LEFT')
+        follow_line()
+    elif version == 'ShitsAndGiggles'
+        turnright(45)
+        while line_sensor.reflection() > 60:
+            robot.drive(150, 0)
+
+def sekvens11():
+    turnRight(TURNANGLE=45)
+    robot.straight(100)
+    turnLeft(TURNANGLE=90)
+    robot.straight(100)
+    turnRight(TURNANGLE=90)
+    robot.straight(100)
+    turnLeft(TURNANGLE=45)
+    while line_sensor.reflection < 60
+        robot.drive(150, 0)
+    follow_line()
+
+def sekvens12():
+    around_bottle(rotation='RIGHT')
+    follow_line(direction=-1)
 
 def approch_bottle():
     while sensorVar > 50:
         drive_speed_bottle = (sensorVar * 2) / 2
         robot.drive(drive_speed_bottle)
         sensorVar = ultra_sensor.distance()
+
+def around_bottle(rotation='LEFT'):
 
 def loop(): #MAIN CODE - THIS CODE CALLS THE SUBFUNCTIONS
     follow_line()
@@ -301,8 +327,9 @@ def turnRightToLine(ROTATION_SPEED = 45):
         wait(1)
     robot.stop()
 
-def grab(speed, rotations)
-    print('something')
+def grab(SPEED=1800, rotations=100)
+    claw_motor.reset_angle(0)
+    claw_motor.run_angle(speed=SPEED, rotation_angle=360*rotations)
 
 def line_test():
     while True:
