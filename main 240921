@@ -193,7 +193,7 @@ def sekvens3():
     robot.straight(-100)
     """
 
-    if avarage_ultra_sensor() < 1000:
+    if avarage_ultra_sensor() < 300:
         #print('Bottle is close enough')
         #robot.straight(110)
         #grab()
@@ -333,7 +333,7 @@ def sekvens8():
     robot.straight(50)
     follow_line()
 
-def sekvens9():
+def sekvens9Dyb():
     wait(1)
 
 def sekvens10(VERSION='normal'):
@@ -585,6 +585,46 @@ def grabtest():
 def soundtest():
     #ev3.speaker.play_file(SoundFile.BoxCat)
     wait(1)
+
+def test_loop_dyb(): #MAIN CODE - THIS CODE CALLS THE SUBFUNCTIONSfollow_line()
+    for sekvens in range(3,5):
+        print(sekvens)      
+        
+        if sekvens == 3:
+            sekvens3()         
+
+        elif sekvens == 4:
+            sekvens4()            
+        
+        elif sekvens == 5:
+            sekvens5()
+
+        elif sekvens == 6:
+            sekvens6()
+
+        elif sekvens == 7:
+            sekvens7()
+
+        elif sekvens == 8:
+            sekvens8()
+
+        elif sekvens == 9:
+            sekvens9Dyb()
+        
+        elif sekvens == 10:
+            sekvens10(VERSION = 'ShitsAndGiggles')
+            
+        elif sekvens == 11:
+            sekvens11()
+            
+        elif sekvens == 12:
+            sekvens12()
+            
+        elif sekvens == 13:
+            sekvens13()
+
+        else:
+            ev3.speaker.play_file(SoundFile.FANFARE)
 
 #grabtest()
 
