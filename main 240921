@@ -154,10 +154,9 @@ def sekvens2():
     print('finished seq 2')
 
 def sekvens3():
-    
-    '''
+    """
     The sequence used by the robot to finish task 3, the waterbottle task
-    '''
+    """
 
     robot.stop()
     gyro_sensor.reset_angle(0)
@@ -175,15 +174,12 @@ def sekvens3():
     find_color(COLOR='WHITE')
     robot.stop()
 
-    claw_motor.run_until_stalled(speed = -1000, then=Stop.HOLD)
-    
-    find_bottle(FULL_ANGLE=90)
-    turnLeft(TURNANGLE = 5)
-    find_bottle(FULL_ANGLE = 10, TURNSPEED = 1)
+    turnRight(TURNANGLE = 45)
 
-    approch_bottle()
+    approach_bottle()
+
     robot.stop()
-
+    
     grab()
     find_color(COLOR = 'WHITE')
 
@@ -195,18 +191,45 @@ def sekvens3():
     grab(DIRECTION = 'DOWN')
 
     robot.straight(-100)
+    """
 
-    turnLeft(TURNANGLE = 135)
+    if avarage_ultra_sensor() < 1000:
+        #print('Bottle is close enough')
+        #robot.straight(110)
+        #grab()
+        #robot.straight(-100)
+        print('Im at the blue dot :))')
+        turnRight(TURNANGLE = 180)
+        print('I have turned 180 degrees')
+        find_color()
+        print('I foung Grey!')
+        find_color(COLOR = 'WHITE')
+        print('I found white!')
+        robot.straight(900)
+        grab(DIRECTION = 'DOWN')
+        robot.straight(-600)
+        turnLeft(TURNANGLE = 165)
+        find_color()
+        find_color(COLOR = 'WHITE')
+        turnLeft(TURNANGLE = 75)
+        turnLeft(TURNANGLE = 90)
+    else:
+        """
+    turnLeft(TURNANGLE = 110)
+    robot.straight(100)
     find_color()
     find_color(COLOR = 'WHITE')
-    turnRight(TURNANGLE = 45)
+    turnRight(TURNANGLE = 90)
+
+
     follow_line()
 
-def sekvens3reserve():
+
     robot.straight(100)
     follow_line()
 
 def sekvens4():
+
     """
     robot.straight(-100)
 
@@ -232,19 +255,6 @@ def sekvens4():
     follow_line()
     """
     wait(1)
-
-def grey_counter(NUMBER = 1):
-    i = 0
-    while i <= NUMBER:
-        if line_sensor.reflection() < 60:
-            if previous_grey == False:
-                i = i + 1
-            previous_grey = True
-        else:
-            previous_grey = False
-
-    #claw_motor.run_until_stalled(100, then=stop.HOLD, duty_limit=50)
-    claw_motor.run_angle(1000,4000)
 
 def find_color(SPEED = 150, COLOR = 'GREY', TURNANGLE = 0, TIMER = 0):
     reset_time = timer.time()
@@ -393,33 +403,29 @@ def find_bottle(FULL_ANGLE=45, TURNSPEED = 5, DIRECTION = 'RIGHT'):
     else:
         turnRight(TURNANGLE=FULL_ANGLE-(FULL_ANGLE -low_angle))
 
-def approch_bottle(sensorVar = 1000):
+def approach_bottle(sensorVar = 1000):
     print('Beginning fast approach!')
     
     i = 0
 
     while sensorVar > 100:
         sensorVar = avarage_ultra_sensor()
-        drive_speed_bottle = (sensorVar / 5)
-        robot.drive(drive_speed_bottle, 0)
-
-    turnLeft(TURNANGLE = 5)
+        follow_line(BREAKABLE = 1, SPEED = 50, P_GAIN = 1)
+        wait(1)
 
     average_dist = 100
-    print('beginning slow approch' )
-    while average_dist > 60:
+    print('beginning slow approach' )
+    while average_dist > 50:
 
         average_dist = avarage_ultra_sensor()
 
-        drive_speed_bottle = (150/(1/average_dist),0)
+        robot.drive(50,0)
 
-        robot.drive(drive_speed_bottle,0)
-
-    print('bottle has been found!')
+    #print('bottle has been found!')
 
 def avarage_ultra_sensor():
         ava_dist = 0
-        meas = 5
+        meas = 10
 
         for i in range(meas):
             print(ultra_sensor.distance())
@@ -430,7 +436,6 @@ def avarage_ultra_sensor():
         print('Avarage_distance is ')
         print(ava_dist)
         return ava_dist
-
 
 def around_bottle(rotation='LEFT'):
     if rotation == 'LEFT':
@@ -577,13 +582,17 @@ def grabtest():
     wait(2000)
     grab(DIRECTION = 'DOWN')
 
-
+def soundtest():
+    #ev3.speaker.play_file(SoundFile.BoxCat)
+    wait(1)
 
 #grabtest()
 
 #loop()
 
-test_loop()
+#soundtest()
+
+#test_loop()
 
 #ultra_test()
 
@@ -596,3 +605,5 @@ test_loop()
 #follow_line(SPEED=150, P_GAIN=2.5, DIRECTION=-1)
 
 #avarage_ultra_sensor()
+
+sekvens3()
