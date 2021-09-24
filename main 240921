@@ -161,7 +161,7 @@ def sekvens3():
 
     robot.stop()
     gyro_sensor.reset_angle(0)
-    sensorVar = ultra_sensor.distance()
+    sensorVar = avarage_ultra_sensor()
     print(sensorVar)
     print('after sensor var')
 
@@ -174,12 +174,18 @@ def sekvens3():
     find_color(COLOR='GREY')
     find_color(COLOR='WHITE')
     robot.stop()
-    turnRight(TURNANGLE = 45)
+
+    claw_motor.run_until_stalled(speed = -1000, then=Stop.HOLD)
+    
+    find_bottle(FULL_ANGLE=90)
+    turnLeft(TURNANGLE = 5)
+    find_bottle(FULL_ANGLE = 10, TURNSPEED = 1)
 
     approch_bottle()
     robot.stop()
 
     grab()
+    find_color(COLOR = 'WHITE')
 
     robot.drive(100,0)
     while line_sensor.reflection() > BLACK:
@@ -249,7 +255,7 @@ def find_color(SPEED = 150, COLOR = 'GREY', TURNANGLE = 0, TIMER = 0):
             #print('LINESENSOR (WHITE)')
             #print(line_sensor.reflection())
             current_time = timer.time()
-            if (current_timer - reset_timer > TIMER) and (TIMER != 0):
+            if (current_time - reset_time > TIMER) and (TIMER != 0):
                 break
     
     elif COLOR == 'GREY':
@@ -259,7 +265,7 @@ def find_color(SPEED = 150, COLOR = 'GREY', TURNANGLE = 0, TIMER = 0):
             #print(line_sensor.reflection())
             wait(1)
             current_time = timer.time()
-            if (current_timer - reset_timer > TIMER) and (TIMER != 0):
+            if (current_time - reset_time > TIMER) and (TIMER != 0):
                 break
 
 def sekvens5():
@@ -364,29 +370,67 @@ def sekvens12():
     around_bottle(rotation = 'LEFT')
     follow_line(P_GAIN=2.5)
 
+def find_bottle(FULL_ANGLE=45, TURNSPEED = 5, DIRECTION = 'RIGHT'):
+    angle = 0
+    low_distance = 1000
+    low_angle = 0
+
+    while angle > FULL_ANGLE:
+        if DIRECTION == 'RIGHT':
+            turnRight(TURNANGLE = TURNSPEED)
+        else:
+            turnLeft(TURNANGLE = TURNSPEED)
+
+        sensorVar = avarage_ultra_sensor()
+
+        if sensorvar < low_distance:
+            low_distance = sensorVar
+            low_angle = angle
+        angle = angle + TURNSPEED
+
+    if DIRECTION == 'RIGHT':
+        turnLeft(TURNANGLE=FULL_ANGLE-(FULL_ANGLE -low_angle))
+    else:
+        turnRight(TURNANGLE=FULL_ANGLE-(FULL_ANGLE -low_angle))
+
 def approch_bottle(sensorVar = 1000):
+    print('Beginning fast approach!')
+    
     i = 0
 
     while sensorVar > 100:
-        print('Start quick approch')
-        sensorVar = ultra_sensor.distance()
-        # Calculate the deviation from the threshold.
-        deviation = line_sensor.reflection() - threshold
-        # Calculate the turn rate.
-        turn_rate = 1.2 * deviation*-1
-        # Set the drive base speed and turn rate.
-        SPEED_bottle = (sensorVar)/5
-        robot.drive(SPEED_bottle, turn_rate)
-        print(sensorVar)
+        sensorVar = avarage_ultra_sensor()
+        drive_speed_bottle = (sensorVar / 5)
+        robot.drive(drive_speed_bottle, 0)
 
-    print('Turning left')
     turnLeft(TURNANGLE = 5)
-    
-    print('start slow approch')
-    while sensorVar > 55:
-        sensorVar = ultra_sensor.distance()
-        SPEED_bottle = (sensorVar)/10
-        robot.drive(SPEED_bottle, 0)
+
+    average_dist = 100
+    print('beginning slow approch' )
+    while average_dist > 60:
+
+        average_dist = avarage_ultra_sensor()
+
+        drive_speed_bottle = (150/(1/average_dist),0)
+
+        robot.drive(drive_speed_bottle,0)
+
+    print('bottle has been found!')
+
+def avarage_ultra_sensor():
+        ava_dist = 0
+        meas = 5
+
+        for i in range(meas):
+            print(ultra_sensor.distance())
+            ava_dist = ava_dist + ultra_sensor.distance()
+            print(ava_dist)
+
+        ava_dist = ava_dist / meas
+        print('Avarage_distance is ')
+        print(ava_dist)
+        return ava_dist
+
 
 def around_bottle(rotation='LEFT'):
     if rotation == 'LEFT':
@@ -484,12 +528,12 @@ def angle_test():
 
 def ultra_test():
     while True:
-        sensorVar = ultra_sensor.distance()
+        sensorVar = avarage_ultra_sensor()
         print(sensorVar)
 
 def test_loop(): #MAIN CODE - THIS CODE CALLS THE SUBFUNCTIONS
     follow_line()
-    for sekvens in range(10,13):
+    for sekvens in range(3,5):
         print(sekvens)      
         
         if sekvens == 3:
@@ -533,11 +577,13 @@ def grabtest():
     wait(2000)
     grab(DIRECTION = 'DOWN')
 
-grabtest()
+
+
+#grabtest()
 
 #loop()
 
-#test_loop()
+test_loop()
 
 #ultra_test()
 
@@ -548,3 +594,5 @@ grabtest()
 #turnLeft()     
 
 #follow_line(SPEED=150, P_GAIN=2.5, DIRECTION=-1)
+
+#avarage_ultra_sensor()
