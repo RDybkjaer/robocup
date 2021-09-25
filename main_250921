@@ -1,0 +1,686 @@
+#!/usr/bin/env pybricks-micropython
+from pybricks.hubs import EV3Brick
+from pybricks.ev3devices import (Motor, TouchSensor, ColorSensor, InfraredSensor, UltrasonicSensor, GyroSensor)
+from pybricks.parameters import Port, Stop, Direction, Button, Color
+from pybricks.tools import wait, StopWatch, DataLog
+from pybricks.robotics import DriveBase
+from pybricks.media.ev3dev import SoundFile, ImageFile
+
+
+# This program requires LEGO EV3 MicroPython v2.0 or higher.
+# Click "Open user guide" on the EV3 extension tab for more information.
+
+# Create your objects here.
+ev3 = EV3Brick()
+left_motor = Motor(Port.B) #Left motor in port B
+right_motor = Motor(Port.C) # Right motor in port C
+claw_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE) #Claw motor in port A
+line_sensor = ColorSensor(Port.S2) #Line sensor in port
+#push_sensor = TouchSensor(Port.S3)
+ultra_sensor = UltrasonicSensor(Port.S3)
+gyro_sensor = GyroSensor(Port.S1) #Gyro sensor in port 1
+
+# Initialize the drive base.
+robot = DriveBase(left_motor, right_motor, wheel_diameter=50, axle_track=138)
+
+timer = StopWatch()
+
+
+#grå 30 25 26    // 48 49
+#hvid 52 46 65   // 86 87
+#sort 6 9        // 9 8
+
+GREY = 48
+WHITE = 80
+BLACK = 15
+
+threshold = (GREY + WHITE) / 2
+
+def sekvens1():
+    switch_lane(TURN_SIDE='RIGHT')
+    follow_line(P_GAIN=1.2)
+
+def sekvens2():
+    switch_lane(TURN_SIDE='LEFT')
+    follow_line(SPEED=150, P_GAIN=2.5)
+
+    print('finished seq 2')
+
+def sekvens3():
+    """
+    The sequence used by the robot to finish task 3, the waterbottle task
+    """
+
+    robot.stop()
+    gyro_sensor.reset_angle(0)
+    sensorVar = avarage_ultra_sensor()
+    print(sensorVar)
+    print('after sensor var')
+
+    turnRight(TURNANGLE=45)
+    print('after turn succes')
+    robot.straight(50)
+    print('driving 10cm')
+
+    find_color(COLOR='WHITE')
+    find_color(COLOR='GREY')
+    find_color(COLOR='WHITE')
+    robot.stop()
+
+    turnRight(TURNANGLE = 45)
+
+    approach_bottle()
+
+    robot.stop()
+    
+    grab()
+    find_color(COLOR = 'WHITE')
+
+    robot.drive(100,0)
+    while avarage_line_sensor() > BLACK:
+        wait(1)
+    robot.stop()
+
+    grab(DIRECTION = 'DOWN')
+
+    robot.straight(-100)
+    """
+
+    if avarage_ultra_sensor() < 300:
+        #print('Bottle is close enough')
+        #robot.straight(110)
+        #grab()
+        #robot.straight(-100)
+        print('Im at the blue dot :))')
+        turnRight(TURNANGLE = 180)
+        print('I have turned 180 degrees')
+        find_color()
+        print('I foung Grey!')
+        find_color(COLOR = 'WHITE')
+        print('I found white!')
+        robot.straight(900)
+        grab(DIRECTION = 'DOWN')
+        robot.straight(-600)
+        turnLeft(TURNANGLE = 165)
+        find_color()
+        find_color(COLOR = 'WHITE')
+        turnLeft(TURNANGLE = 75)
+        turnLeft(TURNANGLE = 90)
+    else:
+        """
+    turnLeft(TURNANGLE = 110)
+    robot.straight(100)
+    find_color()
+    find_color(COLOR = 'WHITE')
+    turnRight(TURNANGLE = 90)
+
+
+    follow_line()
+
+
+    robot.straight(100)
+    follow_line()
+
+def sekvens4():
+
+    """
+    robot.straight(-100)
+
+    find_color(SPEED = - 150, COLOR='WHITE')
+
+    turnLeft(ROTATION_SPEED = 60, TURNANGLE = 180)
+
+    robot.drive(150,0)
+    grey_counter(NUMBER = 4)
+
+    turnRight(TURNANGLE = 5)
+
+    grab(ROTATIONS = -2)
+
+    robot.straight(-500)
+
+    turnLeft(ROTATION_SPEED = 60, TURNANGLE = 180)
+
+    find_color()
+
+    turnLeft(TURNANGLE = 85)
+
+    follow_line()
+    """
+    wait(1)
+
+def sekvens5():
+    print('entered 5')
+    turnLeft(TURNANGLE=45)
+    find_color(COLOR = 'WHITE')
+    find_color()
+    turnLeft(TURNANGLE=25)
+    follow_line()
+
+def sekvens6():
+    timer.reset()
+    robot.straight(100)
+    while timer.time() < 12000:
+        follow_line(SPEED = 150, BREAKABLE = 1)
+        print(timer.time())
+    reset_time = timer.time()
+
+    while True:
+        follow_line(SPEED = 100, BREAKABLE = 1)
+        current_time = timer.time()
+        if avarage_line_sensor() < threshold:
+            print(line_sensor.reflection())
+            print('Color is grey')
+            reset_time = timer.time()
+        elif current_time - reset_time > 2000:
+            print('WHITE!')
+            turnLeft(TURNANGLE = 125)
+            break
+        print(timer.time())
+    
+    find_color()
+    find_color(COLOR = 'WHITE')
+    turnRight(TURNANGLE = 45)
+    follow_line()
+
+def sekvens7():
+    current_time = timer.time()
+    while timer.time() - current_time < 6000:
+        follow_line(SPEED = 100, P_GAIN= 0.8, BREAKABLE=1)
+    turnLeft(TURNANGLE = 45)
+    find_color(COLOR = 'WHITE')
+    find_color()
+    find_color(COLOR = 'WHITE')
+    find_color()
+    find_color(COLOR = 'WHITE')
+    turnRight(TURNANGLE = 45) 
+
+    current_time = timer.time()
+    while timer.time() - current_time < 3000:
+        follow_line(P_GAIN=1.5)
+    follow_line(P_GAIN = 2.5)
+
+def sekvens8():
+    robot.straight(50)
+    follow_line()
+
+def sekvens9Dyb():
+    wait(1)
+
+def sekvens10(VERSION='normal'):
+    if VERSION == 'normal':
+        prin('10, normal')
+        around_bottle(rotation='RIGHT')
+        robot.straight(100)
+        follow_line()
+    elif VERSION == 'ShitsAndGiggles':
+        print('10, SAG')
+        turnRight(TURNANGLE = 40)
+        robot.straight(100)
+        find_color()
+        robot.stop()
+        find_color(COLOR = 'WHITE')
+        robot.stop()
+        turnRight(TURNANGLE = 110)
+        follow_line(SIDE = 'RIGHT',SPEED = 100, P_GAIN = 1.5)
+
+def sekvens11():
+    robot.stop()
+    grab(ROTATIONS=15)
+    print('liftup')
+    robot.straight(600)
+    turnLeft(TURNANGLE=45)
+    print('left90')
+    robot.straight(350)
+    turnRight(TURNANGLE=90)
+    print('right90')
+    robot.straight(300)
+    turnLeft(TURNANGLE=45)
+    print('left45')
+    find_color()
+    print('find grey')
+    robot.stop()
+    grab(DIRECTION='DOWN', ROTATIONS=15)
+    print('de-claw')
+    follow_line()
+
+def sekvens12():
+    around_bottle(rotation='RIGHT')
+    print('11, normal')
+    robot.straight(50)
+    around_bottle(rotation = 'LEFT')
+    follow_line(P_GAIN=2.5)
+
+def follow_line(SPEED=150, P_GAIN=1.2, SIDE = 'LEFT', BREAKABLE = 0):
+    #SIDE 'LEFT' gives bias to the left side of the line, 'RIGHT' to the right side
+    # Set the gain of the proportional line controller. This means that for every
+    # percentage point of light deviating from the threshold, we set the turn
+    # rate of the drivebase to 1.2 degrees per second.
+
+    # Set the gain of the proportional line controller. This means that for every
+    # percentage point of light deviating from the threshold, we set the turn
+    # rate of the drivebase to 1.2 degrees per second.
+
+    # For example, if the light value deviates from the threshold by 10, the robot
+    # steers at 10*1.2 = 12 degrees per second.
+
+    # Start following the line endlessly.
+
+    if SIDE == 'RIGHT':
+        direction = -1
+    else:
+        direction = 1
+        
+
+    reset_time = timer.time()
+
+    while True:
+        # Calculate the deviation from the threshold.
+        deviation = avarage_line_sensor() - threshold
+        # Calculate the turn rate.
+        turn_rate = P_GAIN * deviation * direction
+
+        current_time = timer.time()
+
+        if avarage_line_sensor() < threshold:
+            print(line_sensor.reflection())
+            print('Color is grey')
+            reset_time = timer.time()
+        elif current_time - reset_time > 5000:
+            panic_routine(SIDE)
+
+        # Set the drive base speed and turn rate.
+        robot.drive(SPEED, turn_rate)
+        if BREAKABLE == 1:
+            break
+            
+        if avarage_line_sensor() < BLACK:
+            break
+
+def turnRight(TURNANGLE = 90, ROTATION_SPEED = 75):
+    ang = 0
+    gyro_sensor.reset_angle(0)
+    robot.drive(0,ROTATION_SPEED)
+    print('begin right turn')
+
+    while  ang < TURNANGLE:
+        ang = gyro_sensor.angle()
+    print('finished right turn')
+    robot.stop()
+
+def turnLeft(TURNANGLE = 90, ROTATION_SPEED = 75):
+    ang = 0
+    gyro_sensor.reset_angle(0)
+    robot.drive(0,-ROTATION_SPEED)
+    print('begin left turn')
+
+    while  ang > -TURNANGLE:
+        ang = gyro_sensor.angle()
+    print('finished left turn')
+    robot.stop()
+
+def grab(SPEED=1000, ROTATIONS=11, DIRECTION = 'UP'):
+    claw_motor.reset_angle(0)
+    if DIRECTION == 'DOWN':
+        SPEED = SPEED *-1
+    claw_motor.run_angle(speed=SPEED, rotation_angle=360*ROTATIONS,wait=True)
+
+def avarage_ultra_sensor():
+        ava_dist = 0
+        meas = 10
+
+        for i in range(meas):
+            print(ultra_sensor.distance())
+            ava_dist = ava_dist + ultra_sensor.distance()
+            print(ava_dist)
+
+        ava_dist = ava_dist / meas
+        print('Avarage distance is ')
+        print(ava_dist)
+        return ava_dist
+
+def avarage_line_sensor():
+        ava_light = 0
+        meas = 10
+
+        for i in range(meas):
+            print(line_sensor.reflection())
+            ava_light = ava_light + line_sensor.reflection()
+            print(ava_light)
+
+        ava_light = ava_light / meas
+        print('Avarage light reflection is ')
+        print(ava_light)
+        return ava_light
+
+def switch_lane(TURN_SIDE='RIGHT'): #BASIC CODE FOR CHANGING LANE - USED IN SEKVENS 1 & 4
+
+    i=0
+
+    """
+    switch_lane is used to change lanes, by ignoring other lanes.
+    Defined by TURN_SIDE, it'll turn either 45 degrees right, left or not at all.
+
+    An idea might be to add at "forwards or backwards" argument, so it can function for sequence 5 as well.
+    """
+
+    robot.straight(50)
+    #Following lines defines which way to turn. If no side is given, it'll beep and stop the function
+    while True:
+        if TURN_SIDE == 'RIGHT':
+            turnRight(TURNANGLE = 45)
+        elif TURN_SIDE == 'LEFT':
+            turnLeft(TURNANGLE = 45)
+        else:
+            break
+        find_color(COLOR ='WHITE')
+        find_color()
+        print('Out of the loop')
+        robot.stop()
+        print('stopped ok')
+
+        robot.straight(80)
+        print('8cm')
+
+        
+        if TURN_SIDE == 'RIGHT':
+            print('correction left')
+            turnLeft(TURNANGLE = 45)
+        elif TURN_SIDE == 'LEFT':
+            print('correcting right')
+            turnRight(TURNANGLE = 45)
+        else:
+            print('not correcting')
+        
+        print('breaking')
+        break
+    
+def panic_routine(SIDE = 'LEFT'):
+    print('PANIK!!!')
+
+    if direction == 'RIGHT':
+        #på højre side af linjen
+        for i in range (4):
+            turnLeft(TURNANGLE = 90)
+            find_color(TIMER = 2000)
+            turnLEFT(TURNANGLE = 180)
+            find_color(TIMER = 2000)
+
+    else:
+        #på venstre side af linjen
+        for i in range (4):
+            turnLeft(TURNANGLE = 90)
+            find_color(TIMER = 2000)
+            turnLEFT(TURNANGLE = 180)
+            find_color(TIMER = 2000)
+
+def find_color(SPEED = 150, COLOR = 'GREY', TURNANGLE = 0, TIMER = 0):
+    reset_time = timer.time()
+
+    robot.drive(SPEED,TURNANGLE) #drive with 360deg/sec
+    if COLOR == 'WHITE':
+        while avarage_line_sensor() < 70:
+            #print('LINESENSOR (WHITE)')
+            #print(avarage_line_sensor())
+            current_time = timer.time()
+            if (current_time - reset_time > TIMER) and (TIMER != 0):
+                break
+    
+    elif COLOR == 'GREY':
+        robot.drive(SPEED,TURNANGLE) #drive with 360deg/sec
+        while avarage_line_sensor() > 55:
+            #print('LINESENSOR (GREY)')
+            #print(avarage_line_sensor())
+            wait(1)
+            current_time = timer.time()
+            if (current_time - reset_time > TIMER) and (TIMER != 0):
+                break
+
+def find_bottle(FULL_ANGLE=45, TURNSPEED = 5, DIRECTION = 'RIGHT'):
+    angle = 0
+    low_distance = 1000
+    low_angle = 0
+
+    for angle in range(0,FULL_ANGLE,TURNSPEED):
+        if DIRECTION == 'RIGHT':
+            turnRight(TURNANGLE = TURNSPEED)
+        else:
+            turnLeft(TURNANGLE = TURNSPEED)
+
+        sensorVar = avarage_ultra_sensor()
+
+        if sensorvar < low_distance:
+            low_distance = sensorVar
+            low_angle = angle
+
+    if DIRECTION == 'RIGHT':
+        turnLeft(TURNANGLE = (FULL_ANGLE-low_angle)
+    else:
+        turnRight(TURNANGLE = (FULL_ANGLE-low_angle)
+        
+    """
+    Original kode:
+    angle = 0
+    low_distance = 1000
+    low_angle = 0
+
+    while angle > FULL_ANGLE:
+        if DIRECTION == 'RIGHT':
+            turnRight(TURNANGLE = TURNSPEED)
+        else:
+            turnLeft(TURNANGLE = TURNSPEED)
+
+        sensorVar = avarage_ultra_sensor()
+
+        if sensorvar < low_distance:
+            low_distance = sensorVar
+            low_angle = angle
+        angle = angle + TURNSPEED
+
+    if DIRECTION == 'RIGHT':
+        turnLeft(TURNANGLE=FULL_ANGLE-(FULL_ANGLE -low_angle))
+    else:
+        turnRight(TURNANGLE=FULL_ANGLE-(FULL_ANGLE -low_angle))
+    """
+
+def approach_bottle(sensorVar = 1000):
+    print('Beginning fast approach!')
+    
+    i = 0
+
+    while sensorVar > 100:
+        sensorVar = avarage_ultra_sensor()
+        follow_line(BREAKABLE = 1, SPEED = 50, P_GAIN = 1)
+        wait(1)
+
+    average_dist = 100
+    print('beginning slow approach' )
+    while average_dist > 50:
+
+        average_dist = avarage_ultra_sensor()
+
+        robot.drive(50,0)
+
+    #print('bottle has been found!')
+
+def around_bottle(rotation='LEFT'):
+    if rotation == 'LEFT':
+        turnLeft(TURNANGLE=45)
+        find_color(TURNANGLE = 15)
+    elif rotation == 'RIGHT':
+        turnRight(TURNANGLE=45)
+        find_color(TURNANGLE = -15)
+
+def loop(): #MAIN CODE - THIS CODE CALLS THE SUBFUNCTIONS
+    follow_line()
+    for sekvens in range(1,13):
+        print(sekvens)
+
+        if sekvens == 1:
+            sekvens1()  
+
+        elif sekvens == 2:
+            sekvens2()        
+
+        elif sekvens == 3:
+            sekvens3()         
+
+        elif sekvens == 4:
+            sekvens4()            
+
+        elif sekvens == 5:
+            sekvens5()
+
+        elif sekvens == 6:
+            sekvens6()
+
+        elif sekvens == 7:
+            sekvens7()
+
+        elif sekvens == 8:
+            sekvens8()
+
+        elif sekvens == 9:
+            sekvens9()
+        
+        elif sekvens == 10:
+            sekvens10(VERSION = 'ShitsAndGiggles')
+            
+        elif sekvens == 11:
+            sekvens11()
+            
+        elif sekvens == 12:
+            sekvens12()
+            
+        elif sekvens == 13:
+            sekvens13()
+
+        else:
+            ev3.speaker.play_file(SoundFile.FANFARE)
+
+def line_test():
+    while True:
+        print(deviation)
+
+def angle_test():
+    for i in range(0,180,15):
+        gyro_sensor.reset_angle(0)
+        robot.turn(i)
+        ang = gyro_sensor.angle()
+
+def ultra_test():
+    while True:
+        sensorVar = avarage_ultra_sensor()
+        print(sensorVar)
+
+def test_loop(): #MAIN CODE - THIS CODE CALLS THE SUBFUNCTIONS
+    follow_line()
+    for sekvens in range(3,5):
+        print(sekvens)      
+        
+        if sekvens == 3:
+            sekvens3()         
+
+        elif sekvens == 4:
+            sekvens4()            
+        
+        elif sekvens == 5:
+            sekvens5()
+
+        elif sekvens == 6:
+            sekvens6()
+
+        elif sekvens == 7:
+            sekvens7()
+
+        elif sekvens == 8:
+            sekvens8()
+
+        elif sekvens == 9:
+            sekvens9()
+        
+        elif sekvens == 10:
+            sekvens10(VERSION = 'ShitsAndGiggles')
+            
+        elif sekvens == 11:
+            sekvens11()
+            
+        elif sekvens == 12:
+            sekvens12()
+            
+        elif sekvens == 13:
+            sekvens13()
+
+        else:
+            ev3.speaker.play_file(SoundFile.FANFARE)
+
+def grab_test():
+    grab()
+    wait(2000)
+    grab(DIRECTION = 'DOWN')
+
+def sound_test():
+    #ev3.speaker.play_file(SoundFile.BoxCat)
+    wait(1)
+
+def test_loop_dyb(): #MAIN CODE - THIS CODE CALLS THE SUBFUNCTIONSfollow_line()
+    for sekvens in range(3,5):
+        print(sekvens)      
+        
+        if sekvens == 3:
+            sekvens3()         
+
+        elif sekvens == 4:
+            sekvens4()            
+        
+        elif sekvens == 5:
+            sekvens5()
+
+        elif sekvens == 6:
+            sekvens6()
+
+        elif sekvens == 7:
+            sekvens7()
+
+        elif sekvens == 8:
+            sekvens8()
+
+        elif sekvens == 9:
+            sekvens9Dyb()
+        
+        elif sekvens == 10:
+            sekvens10(VERSION = 'ShitsAndGiggles')
+            
+        elif sekvens == 11:
+            sekvens11()
+            
+        elif sekvens == 12:
+            sekvens12()
+            
+        elif sekvens == 13:
+            sekvens13()
+
+        else:
+            ev3.speaker.play_file(SoundFile.FANFARE)
+
+#grab_test()
+
+#loop()
+
+#sound_test()
+
+#test_loop()
+
+#ultra_test()
+
+#angle_test()
+
+#line_test()
+
+#turnLeft()     
+
+#follow_line(SPEED=150, P_GAIN=2.5, DIRECTION=-1)
+
+#avarage_ultra_sensor()
+
+sekvens3()
