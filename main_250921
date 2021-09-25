@@ -235,50 +235,45 @@ def sequence12(): # CODE OF SEQUNCE 12, AROUND THE BOTTLE
 def sequence13(): # CODE OF SEQUENCE 13, THE LANDINGPATH. CURRENTLY JUST PLAYING A SOUND
     ev3.speaker.play(SoundFile.FANFARE)
 
-def follow_line(SPEED=150, P_GAIN=1.2, SIDE = 'LEFT', BREAKABLE = 0): #FOLLOW LINE, THE IDLE FUNCTION
+def follow_line(SPEED = 150, P_GAIN = 1.2, SIDE = 'LEFT', BREAKABLE = 0): #FOLLOW LINE, THE BASIC FUNCTION
+    """
+    Follow_line follows a grey line by continuesly calculating how far from the threshold between
+    grey and white the color currently measured by the color sensor is, and correcting for that by 
+    back towards the line. It drives the robot forwards untill a black line is found, or the robot 
+    only have seen white for 3 seconds
+
+    SIDE defines the side of the grey line the program has bias towards
+    BREAKABLE defines whether the program continues to run until a black line, or only runs once
+    P_GAIN defines the proportional value the turn factor is multiplied by
     #SIDE 'LEFT' gives bias to the left side of the line, 'RIGHT' to the right side
-    # Set the gain of the proportional line controller. This means that for every
-    # percentage point of light deviating from the threshold, we set the turn
-    # rate of the drivebase to 1.2 degrees per second.
+    """
 
-    # Set the gain of the proportional line controller. This means that for every
-    # percentage point of light deviating from the threshold, we set the turn
-    # rate of the drivebase to 1.2 degrees per second.
-
-    # For example, if the light value deviates from the threshold by 10, the robot
-    # steers at 10*1.2 = 12 degrees per second.
-
-    # Start following the line endlessly.
-
+    #Defines bias side
     if SIDE == 'RIGHT':
         direction = -1
     else:
         direction = 1
         
-
     reset_time = timer.time()
 
+    #Following is the active drive loop
     while True:
-        # Calculate the deviation from the threshold.
-        deviation = average_line_sensor() - threshold
-        # Calculate the turn rate.
-        turn_rate = P_GAIN * deviation * direction
+        deviation = average_line_sensor() - threshold #Calculate the deviation from the threshold
+        turn_rate = P_GAIN * deviation * direction    # Calculate the turn rate
+        current_time = timer.time()                   #Sets timer to the current time
 
-        current_time = timer.time()
-
-        if average_line_sensor() < threshold:
+        if average_line_sensor() < threshold:         #resets the timer if the color scanned is grey
             print(line_sensor.reflection())
             print('Color is grey')
             reset_time = timer.time()
-        elif current_time - reset_time > 5000:
+        elif current_time - reset_time > 3000:        #Starts panic routine after 3 seconds of white
             panic_routine(SIDE)
 
-        # Set the drive base speed and turn rate.
-        robot.drive(SPEED, turn_rate)
-        if BREAKABLE == 1:
+        robot.drive(SPEED, turn_rate)                 #Set the drivebase speed and turn rate.
+        if BREAKABLE == 1:                            #Allows for continues reading of sensor values
             break
             
-        if average_line_sensor() < BLACK:
+        if average_line_sensor() < BLACK:             #Breaks the program when a black line is found
             break
 
 def turnRight(TURNANGLE = 90, ROTATION_SPEED = 75): # TURNS RIGHT, TURNANGLE DEGREES
