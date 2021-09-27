@@ -171,6 +171,18 @@ def sequence7(): # CODE OF THE SEVENTH SEQUENCE, CROSSING THE TWO LINES, THEN A 
 def sequence8(): # CODE OF SEQUENCE EIGHT, CURRENTLY SKIPPING SEQUENCE NINE
     robot.straight(50)
 
+def sequence9():
+    robot.straight(750)
+    robot.stop()
+    turnLeft(25)
+    robot.straight(300)
+    robot.stop()
+    find_bottle(FULL_ANGLE=90, TURNSPEED= 3)
+    approch_bottle()
+    grab()
+    robot.straight(-1000)
+    grab(DIRECTION='DOWN')
+
 def sequence9Dyb(): # CURRENTLY EMPTY
     wait(1)
 
@@ -458,7 +470,6 @@ def approach_bottle(sensorVar = 1000): #APPROACHES BOTTLE WITH A SPEED DEFINED B
     while average_dist > 50:
 
         average_dist = average_ultra_sensor()
-
         robot.drive(50,0)
 
     #print('bottle has been found!')
@@ -618,7 +629,7 @@ def test_loop_dyb(): #TEST LOOP, OTHER DEFINITION OF SEQUNCE 9
             sequence8()
 
         elif sequence == 9:
-            sequence9Dyb()
+            sequence9()
         
         elif sequence == 10:
             sequence10(VERSION = 'ShitsAndGiggles')
