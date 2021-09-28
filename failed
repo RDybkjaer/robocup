@@ -1,0 +1,667 @@
+#!/usr/bin/env pybricks-micropython
+from pybricks.hubs import EV3Brick
+from pybricks.ev3devices import (Motor, TouchSensor, ColorSensor, InfraredSensor, UltrasonicSensor, GyroSensor)
+from pybricks.parameters import Port, Stop, Direction, Button, Color
+from pybricks.tools import wait, StopWatch, DataLog
+from pybricks.robotics import DriveBase
+from pybricks.media.ev3dev import SoundFile, ImageFile
+
+
+# This program requires LEGO EV3 MicroPython v2.0 or higher.
+# Click "Open user guide" on the EV3 extension tab for more information.
+
+# Create your objects here.
+ev3 = EV3Brick()
+left_motor = Motor(Port.B) #Left motor in port B
+right_motor = Motor(Port.C) # Right motor in port C
+claw_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE) #Claw motor in port A
+line_sensor = ColorSensor(Port.S2) #Line sensor in port
+#push_sensor = TouchSensor(Port.S3)
+ultra_sensor = UltrasonicSensor(Port.S3)
+gyro_sensor = GyroSensor(Port.S1) #Gyro sensor in port 1
+
+# Initialize the drive base.
+robot = DriveBase(left_motor, right_motor, wheel_diameter=50, axle_track=138)
+
+timer = StopWatch()
+
+
+#grå 30 25 26    // 48 49
+#hvid 52 46 65   // 86 87
+#sort 6 9        // 9 8
+
+GREY = 48
+WHITE = 80
+BLACK = 15
+
+threshold = (GREY + WHITE) / 2
+
+def sequence1(): # SWITCH LANE TWICE
+    """
+    This sequence uses the switch_lane function to change lane to the right, and then to the left.
+    """
+    switch_lane(TURN_SIDE='RIGHT')
+    follow_line(SIDE = 'RIGHT', P_GAIN = 1)
+    switch_lane(TURN_SIDE='LEFT')
+
+def sequence2(): # MOVE THE BOTTLE  
+    """
+    The sequence used by the robot to finish task 2, the waterbottle task
+    It moves the robot to the left side of the line, moves increasingly slowly towards the bottle, lifts it up,
+    moves it across the black line, and puts it down. Afterwards it moves back towards the grey line.
+    """
+
+    # Stop at line and sets sensorVar
+    print('seq 2 start')
+    robot.stop()
+    gyro_sensor.reset_angle(0)
+    sensorVar = average_ultra_sensor()
+
+    # Turns right, moves over the grey line, and corrects itself over the left side of the grey line.
+    turnRight(TURNANGLE=25)
+    robot.straight(50)
+    find_color(COLOR='WHITE')
+    find_color(COLOR='GREY')
+    find_color(COLOR='WHITE')
+    print('After white')
+    robot.straight(30)
+    turnRight(TURNANGLE = 55)
+    print('on line')
+
+    #approach_bottle moves the robot towards the bottle
+    approach_bottle()
+    robot.stop()
+    
+    #grabs the bottle, and moves untill it sees the black line
+    print(' ready to grab')
+    grab()
+    find_color(COLOR = 'WHITE') #clears the robot from the blue dot
+    robot.drive(100,0)
+    while average_line_sensor() > BLACK:
+        wait(1)
+    robot.stop()
+
+    #puts down the bottle and backs up
+    grab(DIRECTION = 'DOWN')
+    robot.straight(-100)
+    robot.stop()
+
+    #turns the robot, and moves it over the grey line
+    turnLeft(TURNANGLE = 155)
+    robot.straight(100)
+    find_color()
+    find_color(COLOR = 'WHITE')
+    turnRight(TURNANGLE = 55)
+
+def sequence3(): # OVER THE BRIDGE
+    """
+    This sequence is split up into four sub-parts, and allows the robot to go over the bridge
+    """
+
+    #SUB1: Robot stops at the first line, turns right, and ends up at the next black line
+    robot.stop()
+    turnLeft(TURNANGLE=45)
+    find_color(COLOR = 'WHITE')
+    find_color()
+    find_color(COLOR = 'WHITE')
+    robot.straight(30)
+    turnLeft(TURNANGLE=45)
+    robot.stop()
+
+    #SUB2: Timer is reset, and the robot follows the line for 15 seconds, approximately the time it takes to cross the bridge
+    timer.reset()
+    while timer.time() < 15000: #17000 works
+        follow_line(SPEED = 120, BREAKABLE = 1, P_GAIN = 1, SIDE = 'RIGHT') #follows the line, while watching for time
+        print(timer.time())
+
+
+    #SUB3: Once the brigde has been crossed, the robot moves forwards, untill it sees whtie continuesly for 3 seconds.
+    reset_time = timer.time()
+    while True:
+        follow_line(SPEED = 80, BREAKABLE = 1, SIDE = 'RIGHT', P_GAIN = 1.5)
+        current_time = timer.time()
+        if average_line_sensor() < threshold: #If the robot sees a grey line, it resets the time
+            reset_time = timer.time()
+        elif current_time - reset_time > 3000: #After seing white for 2 seconds, the robot turns 125degrees, and goes back.
+            turnLeft(TURNANGLE = 125)
+            break
+    
+    #SUB4: Find the grey line, cross it, turn towards the next obstacle, and follow the line.
+    find_color()
+    find_color(COLOR = 'WHITE')
+    turnRight(TURNANGLE = 45)
+
+def sequence4(): # CROSS THE FOUR LINES
+    
+    #Reset timer, follow line for 6 seconds
+    current_time = timer.time()
+    while timer.time() - current_time < 6000:
+        follow_line(SPEED = 150, P_GAIN= 0.8, BREAKABLE=1)
+
+    #Turn left, cross 2 lines
+    turnLeft(TURNANGLE = 45)
+    find_color(COLOR = 'WHITE')
+    find_color()
+    find_color(COLOR = 'WHITE')
+    find_color()
+    find_color(COLOR = 'WHITE')
+    turnRight(TURNANGLE = 45) 
+
+    current_time = timer.time()
+    while timer.time() - current_time < 3000:
+        follow_line(P_GAIN=1.5, BREAKABLE = 1)
+        wait(1)
+
+def sequence5(): # DARTBOARD
+    #Initialises a fail sensor
+    fail = 0
+    
+    #Turn left, and place the robot on the right side of the line, parallel with the line
+    turnLeft(TURNANGLE = 45)
+    robot.straight(50)
+    find_color()
+    find_color(COLOR = 'WHITE')
+    turnLeft(TURNANGLE = 35)
+    follow_line(P_GAIN = 0.8, SIDE = 'RIGHT', SPEED = 75)
+
+    #Drives the robot to the center, turn, and then towards the bottle
+    robot.straight(600)
+    robot.reset()
+    robot.stop()
+    turnLeft(TURNANGLE = 30)
+    robot.straight(400)
+    robot.stop()
+    average_dist = 1000
+
+    #Do a sweep, to find the exact angle of the bottle
+    find_bottle(FULL_ANGLE = 60)
+
+
+    reset_time = timer.time() #Timer to registrer failed attempt to catch bottle
+
+    #Approaches the bottle at a slowspeed, looking for a fail sensor
+    while average_dist > 45:
+        average_dist = average_ultra_sensor()
+        robot.drive(50,0)
+        current_time = timer.time() - reset_time
+        if current_time > 7500:
+            fail = 1
+            break
+    robot.stop()
+
+    #If failsafe is 0, the robot will grab the bottle, and drive back with it. Otherwise it will just drive backwards
+    if fail == 0:
+        grab(ROTATIONS=11.5)
+        robot.straight(-(robot.distance()+130))
+        grab(DIRECTION='DOWN', ROTATIONS=11.5)
+        robot.straight(-600)
+    else:
+        robot.straight(-(robot.distance()+130))
+        robot.straight(-600)
+
+    #Turns around and returns to the black line
+    turnLeft(TURNANGLE = 150)
+    find_color()
+    find_color(COLOR = 'WHITE')
+    turnLeft(TURNANGLE = 80)
+
+def sequence6(): # AROUND THE BOTTLE 1
+    around_bottle(rotation='RIGHT')
+
+def sequence7(): # THE LIBARY TASK
+    #Lifts the claw to shorten the robot
+    robot.stop()
+    grab(ROTATIONS=13)
+
+    #approaches the book
+    robot.straight(560)
+    #turns into the book gap and drives into it
+    turnLeft(TURNANGLE=45)
+    robot.straight(320)
+
+    #slowly rotate and move forwards inside the book
+    for i in range(0,70,10):
+        turnRight(TURNANGLE = 10)
+        robot.straight(15)
+    
+    #Exit the book
+    robot.straight(550)
+    turnLeft(TURNANGLE=45)
+
+    #finds the grey line, and returns correction value
+    angleTurned = find_color(TURNANGLE=-30)
+    robot.stop()
+    grab(DIRECTION='DOWN', ROTATIONS=13)
+    find_color(COLOR = 'WHITE')
+    turnRight(TURNANGLE = angleTurned)
+
+def sequence8(): # AROUND THE BOTTLE 2
+    around_bottle(rotation='LEFT')
+
+def sequence9(): # THE LANDING STIP
+    #Moves the robot towards the left line
+    turnLeft(TURNANGLE = 45)
+    robot. straight(50)
+    find_color()
+    find_color(COLOR = 'WHITE')
+    turnRight(TURNANGLE = 45)
+
+    #resets the distance measurement and initialite the sensorVar high.
+    robot.reset()
+    sensorVar = 1000
+    
+    #Drives along the long grey line
+    while sensorVar > 150:
+        follow_line(SIDE = 'LEFT', BREAKABLE = 1)
+        sensorVar = average_ultra_sensor()
+    
+    #saves the driven distance, moves back and turns around
+    driven = robot.distance()
+    robot.straight(-100)
+    turnRight(TURNANGLE = 180)
+
+    #resets the distance measurement and moves half the distance backwards, plus a distance found by trail & error
+    robot.reset()
+    while robot.distance() < ((driven / 2) - 400):
+        follow_line(SIDE = 'RIGHT', BREAKABLE = 1)
+    #Turns towards the middle, drives onto the landing strip
+    turnLeft(TURNANGLE = 90)
+    robot.straight(150)
+
+    robot.stop()
+    wait(3000)
+    grab(ROTATIONS = 13)
+    turnLeft(TURNANGLE = 360)
+    robot.stop()
+    turnRight(TURNANGLE = 360)
+    robot.stop()
+    grab(ROTATIONS = 13, DIRECTION = 'DOWN')
+
+def follow_line(SPEED = 150, P_GAIN = 1.2, SIDE = 'LEFT', BREAKABLE = 0): #FOLLOW LINE, THE BASIC FUNCTION
+    """
+    Follow_line follows a grey line by continuesly calculating how far from the threshold between
+    grey and white the color currently measured by the color sensor is, and correcting for that by 
+    back towards the line. It drives the robot forwards untill a black line is found, or the robot 
+    only have seen white for 3 seconds
+    SIDE defines the side of the grey line the program has bias towards
+    BREAKABLE defines whether the program continues to run until a black line, or only runs once
+    P_GAIN defines the proportional value the turn factor is multiplied by
+    #SIDE 'LEFT' gives bias to the left side of the line, 'RIGHT' to the right side
+    """
+
+    #Defines bias side
+    if SIDE == 'RIGHT':
+        direction = -1
+    else:
+        direction = 1
+        
+    reset_time = timer.time()
+
+    #Following is the active drive loop
+    while True:
+        deviation = average_line_sensor() - threshold #Calculate the deviation from the threshold
+        turn_rate = P_GAIN * deviation * direction    # Calculate the turn rate
+        current_time = timer.time()                   #Sets timer to the current time
+
+        if average_line_sensor() < threshold:         #resets the timer if the color scanned is grey
+            #print(line_sensor.reflection())
+            #print('Color is grey')
+            reset_time = timer.time()
+        elif current_time - reset_time > 10000:        #Starts panic routine after 10 seconds of white
+            panic_routine(SIDE)
+
+        robot.drive(SPEED, turn_rate)                 #Set the drivebase speed and turn rate.
+        if BREAKABLE == 1:                            #Allows for continues reading of sensor values
+            break
+            
+        if average_line_sensor() < BLACK:             #Breaks the program when a black line is found
+            break
+
+def follow_turn(TURNSIDE = 'LEFT', TURNANGLE = 0, FOLLOW_TURN_P_GAIN= 2.25, FOLLOW_TURN_SPEED= 100):
+    gyro_sensor.reset_angle(0)
+    #Follows the line at high gain and low speed as long as the gyrosensor is 15% below the turnangle
+    while abs(gyro_sensor.angle()) < TURNANGLE*0.85:
+        print(gyro_sensor.angle())
+        print(abs(gyro_sensor.angle()))
+        follow_line(SPEED= FOLLOW_TURN_SPEED, SIDE = TURNSIDE, P_GAIN = FOLLOW_TURN_P_GAIN,BREAKABLE = 1)
+        
+        #breaks the program if the line is black. This is a fail-safe
+        if average_line_sensor() < BLACK:
+            break
+
+def turnRight(TURNANGLE = 90, ROTATION_SPEED = 75): # TURNS RIGHT, TURNANGLE DEGREES
+    """
+    This program turns TURNANGLE degrees right, based on the gyro-sensor
+    """
+    ang = 0
+    gyro_sensor.reset_angle(0)
+    robot.drive(0,ROTATION_SPEED)
+
+    while  ang < TURNANGLE:
+        ang = gyro_sensor.angle()
+    robot.stop()
+
+def turnLeft(TURNANGLE = 90, ROTATION_SPEED = 75): # TURNS LEFT, TURNANGLE DEGREES
+    """
+    This program turns TURNANGLE degrees left, based on the gyro-sensor
+    """
+    ang = 0
+    gyro_sensor.reset_angle(0)
+    robot.drive(0,-ROTATION_SPEED)
+
+    while  ang > -TURNANGLE:
+        ang = gyro_sensor.angle()
+    robot.stop()
+
+def grab(SPEED=1000, ROTATIONS=11.5, DIRECTION = 'UP'): # ROTATION CLAW_MOTOR, TO LIFT UP/DOWN CLAW
+    """
+    Moves the claw up and down, depending on the direction given by DIRECTION.
+    ROTATIONS is found by trail & error
+    """
+    claw_motor.reset_angle(0)
+    if DIRECTION == 'DOWN':
+        SPEED = SPEED *-1
+    claw_motor.run_angle(speed=SPEED, rotation_angle=360*ROTATIONS,wait=True)
+
+def average_ultra_sensor(): # TAKES 10 MEASUREMENTS OF ULTRASOUND SENSOR, AND RETURN THE AVERAGE VALUE
+        ave_dist = 0
+        meas = 10
+
+        for i in range(meas):
+            #print(ultra_sensor.distance())
+            ave_dist = ave_dist + ultra_sensor.distance()
+            #print(ave_dist)
+
+        ave_dist = ave_dist / meas
+        return ave_dist
+
+def average_line_sensor(): # TAKES 10 MEASUREMENTS OF COLOR SENSOR, AND RETURN THE AVERAGE VALUE
+        ave_light = 0
+        meas = 10
+
+        for i in range(meas):
+            ave_light = ave_light + line_sensor.reflection()
+
+        ave_light = ave_light / meas
+
+        return ave_light
+
+def switch_lane(TURN_SIDE='RIGHT'): #BASIC CODE FOR CHANGING LANE - USED IN sequence 1 & 2
+
+    i=0
+
+    """
+    switch_lane is used to change lanes, by ignoring other lanes.
+    Defined by TURN_SIDE, it'll turn either 45 degrees right, left or not at all.
+    An idea might be to add at "forwards or backwards" argument, so it can function for sequence 5 as well.
+    """
+
+    robot.straight(50)
+    #Following lines defines which way to turn. If no side is given, it'll beep and stop the function
+    while True:
+        if TURN_SIDE == 'RIGHT':
+            turnRight(TURNANGLE = 45)
+        elif TURN_SIDE == 'LEFT':
+            turnLeft(TURNANGLE = 45)
+        else:
+            break
+        find_color(COLOR ='WHITE')
+        find_color()
+        robot.stop()
+
+        robot.straight(80)
+
+        
+        if TURN_SIDE == 'RIGHT':
+            print('correction left')
+            turnLeft(TURNANGLE = 45)
+        elif TURN_SIDE == 'LEFT':
+            print('correcting right')
+            turnRight(TURNANGLE = 45)
+        else:
+            print('not correcting')
+        
+        break
+    
+def panic_routine(SIDE = 'LEFT'): # ROUTINE DONE WHEN WHITE HAVENT BEEN FOUND FOR 10 SECODNS DURING FOLLOW LINE
+    print('PANIK!!!')
+
+    #Defines what side the panic program starts towards
+    if SIDE == 'RIGHT':
+        # Right side of line
+        for i in range (4): # turns, drives out and back 4 times
+            for j in range(1,2): #every second turn is 180 degrees
+                turnLeft(TURNANGLE = 90*j)
+                find_color(TIMER = 2000)
+
+    else:
+        # Left side of line
+        for i in range (4): # turns, drives out and back 4 times
+            for j in range(1,2): #every second turn is 180 degrees
+                turnRight(TURNANGLE = 90*j)
+                find_color(TIMER = 2000)
+
+def find_color(SPEED = 150, COLOR = 'GREY', TURNANGLE = 0, TIMER = 0): #DRIVES STRAIGHT FORWARDS UNTIL IT SEE _COLOR
+    """ 
+    return_angle og TIMER kan IKKE bruges sammen!
+    """
+    gyro_sensor.reset_angle(0)
+    reset_time = timer.time()
+
+    robot.drive(SPEED,TURNANGLE) #drive with 150deg/sec
+
+    #If the color given is WHITE, the program will run until it find a WHITE spot, or until a timer breaks it
+    if COLOR == 'WHITE':
+        while average_line_sensor() < 70:
+            #print('LINESENSOR (WHITE)')
+            #print(average_line_sensor())
+            current_time = timer.time()
+            if (current_time - reset_time > TIMER) and (TIMER != 0):
+                break
+
+    #If the color given is GREY, the program will run until it find a GREY spot, or until a timer breaks it
+    elif COLOR == 'GREY':
+        robot.drive(SPEED,TURNANGLE) #drive with 360deg/sec
+        while average_line_sensor() > 55:
+            #print('LINESENSOR (GREY)')
+            #print(average_line_sensor())
+            wait(1)
+            current_time = timer.time()
+            if (current_time - reset_time > TIMER) and (TIMER != 0):
+                break
+    angleTurned = gyro_sensor.angle()
+    #returns the turnangle if the TURNANGLE given is unequal to 0.
+    if (TURNANGLE != 0):
+        return (abs(angleTurned)-20)
+
+def find_bottle(FULL_ANGLE = 45, TURNSPEED = 1): #SWEEP OF ULTRASOUND TO FIND BOTTLE BY ROTATING
+    """
+    This program makes a sweep of the sensorVar values given from the different rotation angles, centered around
+    the starting posistion
+    FULL_ANGLE defines the with of the sweep, and TURNANGLE defines the speed of the sweep (eg. 1 degree rotation pr measurement)
+    """
+    angle = 0
+    low_distance = 1000
+    low_angle = 0
+    turnLeft(TURNANGLE=FULL_ANGLE/2)
+    for angle in range(0,FULL_ANGLE,TURNSPEED):
+        turnRight(TURNANGLE = TURNSPEED, ROTATION_SPEED = 25 )
+        sensorVar=average_ultra_sensor()
+        if sensorVar < low_distance:
+            low_distance = sensorVar
+            low_angle = angle
+            print(angle)
+            print(gyro_sensor.angle())
+    turnLeft(TURNANGLE=FULL_ANGLE-low_angle)
+
+def approach_bottle(sensorVar = 1000): #APPROACHES BOTTLE WITH A SPEED DEFINED BY DISTANCE.
+    reset_time = timer.time()
+    i = 0
+    #Approach the bottle with a high P_GAIN to center on the line.
+    while sensorVar > 150:
+        sensorVar = average_ultra_sensor()
+        follow_line(BREAKABLE = 1, SPEED = 50, P_GAIN = 2.2)
+        current_time = timer.time() - reset_time
+        if current_time >7500:
+            break
+        wait(1)
+
+    #Approaches the bottle with a lower P_GAIN to move more finely
+    while sensorVar > 100:
+        sensorVar = average_ultra_sensor()
+        follow_line(BREAKABLE = 1, SPEED = 50, P_GAIN = 0.8)
+        current_time = timer.time() - reset_time
+        if current_time >7500:
+            break
+        wait(1)
+
+    #Approaches the last bit, and ends the function
+    while sensorVar > 45:
+        sensorVar = average_ultra_sensor()
+        robot.drive(50,0)
+        current_time = timer.time() - reset_time
+        if current_time >7500:
+            break
+
+def around_bottle(rotation='LEFT'): #GO AROUND THE BOTTLE (SEQUENCE 6 & 8)
+    #Defines what side around the bottle the robot goes
+    if rotation == 'LEFT':
+        turnLeft(TURNANGLE=45)
+        robot.straight(50)
+        angleTurned = find_color(TURNANGLE = 25)
+        turnLeft(angleTurned-10)
+    elif rotation == 'RIGHT':
+        turnRight(TURNANGLE=45)
+        robot.straight(50)
+        angleTurned = find_color(TURNANGLE = -25)
+        turnRight(angleTurned-10)
+    return angleTurned
+
+def line_test():
+    print(average_line_sensor())
+    wait(500)
+
+def rotateTest():
+    turnLeft(TURNANGLE = 360)
+    wait(2000)
+
+def loop(): #TEST LOOP, OTHER DEFINITION OF SEQUNCE 9
+    wait(5000)
+    follow_line(SIDE = 'RIGHT')
+    for sequence in range(3,10):
+
+        next_speed = 150
+        next_side = 'RIGHT'
+        next_breakable = 0
+        next_P_GAIN = 1.2
+
+
+        print('Next sequence: ')
+        print(sequence)
+
+        if sequence == 1: # SWITCH LANES
+            sequence1()
+            follow_turn(TURNSIDE = 'RIGHT', TURNANGLE = 180)
+        
+        elif sequence == 2: # MOVE BOTTLE
+            sequence2()
+            next_side = 'LEFT'
+
+        elif sequence == 3: # OVER THE BRIDGE
+            sequence3()
+            next_side = 'LEFT'
+
+        elif sequence == 4: #SWITCH LANES 
+            sequence4()
+            follow_turn(TURNSIDE = 'LEFT', TURNANGLE = 90)
+            next_side = 'LEFT'    
+        
+        elif sequence == 5: # DARTBOARD
+            sequence5()
+
+        elif sequence == 6:
+            sequence6()
+            follow_turn(TURNSIDE = 'RIGHT', TURNANGLE = 135, FOLLOW_TURN_P_GAIN= 2.5, FOLLOW_TURN_SPEED= 100)
+            next_side= 'RIGHT'
+
+        elif sequence == 7:
+            sequence7()
+            next_side = 'LEFT'
+
+        elif sequence == 8:
+            sequence8()
+            follow_turn(TURNSIDE = 'LEFT', TURNANGLE = 135, FOLLOW_TURN_P_GAIN=2.5,FOLLOW_TURN_SPEED=100)
+            
+        elif sequence == 9:
+            sequence9()
+            ev3.speaker.play_file(SoundFile.FANFARE)
+
+        else:
+            ev3.speaker.play_file(SoundFile.ERROR_ALARM)
+            break
+        
+        print('follow data:')
+        print(next_side)
+        print(next_P_GAIN)
+        follow_line(next_speed, next_P_GAIN, next_side, next_breakable)
+        
+def test_loop_dyb(): #TEST LOOP, OTHER DEFINITION OF SEQUNCE 9
+    wait(5000)
+    follow_line(SIDE = 'RIGHT')
+    for sequence in range(2,10):
+
+        next_speed = 150
+        next_side = 'RIGHT'
+        next_breakable = 0
+        next_P_GAIN = 1.2
+
+
+        print('Next sequence: ')
+        print(sequence)
+
+        if sequence == 1: # SWITCH LANES
+            sequence1()
+            follow_turn(TURNSIDE = 'RIGHT', TURNANGLE = 180)
+        
+        elif sequence == 2: # MOVE BOTTLE
+            sequence2()
+            next_side = 'LEFT'
+
+        elif sequence == 3: # OVER THE BRIDGE
+            sequence3()
+            next_side = 'LEFT'
+
+        elif sequence == 4: #SWITCH LANES 
+            sequence4()
+            follow_turn(TURNSIDE = 'LEFT', TURNANGLE = 90)
+            next_side = 'LEFT'    
+        
+        elif sequence == 5: # DARTBOARD
+            sequence5()
+
+        elif sequence == 6:
+            sequence6()
+            follow_turn(TURNSIDE = 'RIGHT', TURNANGLE = 135)
+
+        elif sequence == 7:
+            sequence7test()
+            next_side = 'LEFT'
+
+        elif sequence == 8:
+            sequence8()
+            follow_turn(TURNSIDE = 'LEFT', TURNANGLE = 135)
+            
+        elif sequence == 9:
+            sequence9()
+            ev3.speaker.play_file(SoundFile.FANFARE)
+
+        else:
+            ev3.speaker.play_file(SoundFile.ERROR_ALARM)
+            break
+        
+        print('follow data:')
+        print(next_side)
+        print(next_P_GAIN)
+        follow_line(next_speed, next_P_GAIN, next_side, next_breakable)
+
+test_loop_dyb()
