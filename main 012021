@@ -6,6 +6,8 @@ from pybricks.tools import wait, StopWatch, DataLog
 from pybricks.robotics import DriveBase
 from pybricks.media.ev3dev import SoundFile, ImageFile
 
+from threading import Thread
+
 
 
 
@@ -39,6 +41,22 @@ BLACK = 15
 
 threshold = (GREY + WHITE) / 2
 
+ev3.speaker.set_volume(volume = 150, which= '_all_')
+
+def IntenseThread():
+    ev3.speaker.play_file(file="ShiverMeTimbers.wav")
+    ev3.speaker.play_file(file="PirateSong.wav")
+
+def SoundThread1():
+    ev3.speaker.play_file(file="Ahoy.wav")
+    ev3.speaker.play_file(file="Laugh.wav")
+    for i in range(3):
+        ev3.speaker.play_file(file="MusixBox.wav")
+        MusicTime = timer.time()
+        CurrentMusicTime = timer.time()
+        while CurrentMusicTime - MusicTime > 13000:   
+            CurrentMusicTime = timer.time()
+
 def sequence1(): # SWITCH LANE TWICE
     switch_lane(TURN_SIDE='RIGHT')
     follow_line(SIDE = 'RIGHT', P_GAIN = 1)
@@ -48,6 +66,7 @@ def sequence2(): # MOVE THE BOTTLE OVER THE LINE
     """
     The sequence used by the robot to finish task 3, the waterbottle task
     """
+    fail = 0
 
     robot.stop()
     gyro_sensor.reset_angle(0)
@@ -104,12 +123,13 @@ def sequence3(): # OVER THE BRIDGE
     find_color(COLOR = 'WHITE')
     robot.straight(30)
     turnLeft(TURNANGLE=45)
-    robot.stop()
-
+    follow_line(SIDE = 'RIGHT')
+    robot.straight(50)
+    
     #SUB2: Timer is reset, and the robot follows the line for 12 seconds, approximately the time it takes to cross the bridge
     timer.reset() 
     while timer.time() < 15000: #17000 works
-        follow_line(SPEED = 120, BREAKABLE = 1, P_GAIN = 1, SIDE = 'RIGHT') #follows the line, while watching for time
+        follow_line(SPEED = 100, BREAKABLE = 1, P_GAIN = 1, SIDE = 'RIGHT') #follows the line, while watching for time
         print(timer.time())
 
 
@@ -488,6 +508,7 @@ def approach_bottle(sensorVar = 1000): #APPROACHES BOTTLE WITH A SPEED DEFINED B
         current_time = timer.time() - reset_time
         if current_time > 7500:
             return 1
+    return 0
 
 def around_bottle(rotation='LEFT'): #GO AROUND THE BOTTLE (SEQUENCE 8 & 10)
     if rotation == 'LEFT':
@@ -511,7 +532,10 @@ def line_test():
     wait(500)
 
 def loop(): #MAIN CODE - THIS CODE CALLS THE SUBFUNCTIONS
+    ST1 = Thread(target=SoundThread1)
+    ST2 = Thread(target=IntenseThread)
     wait(5000)
+    ST1.start()
     follow_line(SIDE = 'RIGHT')
     for sequence in range(1,10):
         next_speed = 150
@@ -527,6 +551,7 @@ def loop(): #MAIN CODE - THIS CODE CALLS THE SUBFUNCTIONS
             follow_turn(TURNSIDE = 'RIGHT', TURNANGLE = 180)
         
         elif sequence == 2: # MOVE BOTTLE
+            ST2.start()
             sequence2()
             next_side = 'LEFT'
 
@@ -544,7 +569,7 @@ def loop(): #MAIN CODE - THIS CODE CALLS THE SUBFUNCTIONS
 
         elif sequence == 6:
             sequence6()
-            follow_turn(TURNSIDE = 'RIGHT', TURNANGLE = 135, FOLLOW_TURN_P_GAIN=2.5,FOLLOW_TURN_SPEED=100)
+            follow_turn(TURNSIDE = 'RIGHT', TURNANGLE = 155, FOLLOW_TURN_P_GAIN=2.5, FOLLOW_TURN_SPEED=100)
 
         elif sequence == 7:
             sequence7()
@@ -552,7 +577,7 @@ def loop(): #MAIN CODE - THIS CODE CALLS THE SUBFUNCTIONS
 
         elif sequence == 8:
             sequence8()
-            follow_turn(TURNSIDE = 'LEFT', TURNANGLE = 135, FOLLOW_TURN_P_GAIN=2.5,FOLLOW_TURN_SPEED=100)
+            follow_turn(TURNSIDE = 'LEFT', TURNANGLE = 155, FOLLOW_TURN_P_GAIN=2.5,FOLLOW_TURN_SPEED=100)
             
         elif sequence == 9:
             sequence9()
@@ -566,14 +591,3 @@ def loop(): #MAIN CODE - THIS CODE CALLS THE SUBFUNCTIONS
         follow_line(next_speed, next_P_GAIN, next_side, next_breakable)
 
 loop()
-
-"""
-
-ev3.speaker.set_volume(volume = 150, which= '_all_')
-
-ev3.speaker.play_file(file="PirateSong.wav")
-grab()
-grab(DIRECTION = 'DOWN')
-
-"""
-
